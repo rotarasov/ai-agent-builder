@@ -5,3 +5,4 @@ leapcell
 uvicorn[standard]
 pydantic
 pydantic-settings
+supabase
