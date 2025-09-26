@@ -4,7 +4,8 @@ import React, { useState } from "react"
 import { Button } from "@/components/ui/button"
 import AgentCard from "@/components/agentCard"
 import {Separator} from "@/components/ui/separator";
-import {AgentConfig} from "@/types/agent"; // adjust path if needed
+import {AgentConfig} from "@/types/agent";
+import {getToolsFromComposio} from "@/lib/composioservice"; // adjust path if needed
 
 export default function Home() {
     const [agents, setAgents] = useState<AgentConfig[]>([{
@@ -39,7 +40,20 @@ export default function Home() {
             )
         )
     }
+    async function fetchTools() {
+        const res = await fetch("/api/tools")
+        return await res.json()
+    }
 
+    const [tools, setTools] = useState<string[]>([])
+
+    React.useEffect(() => {
+        async function loadTools() {
+            const fetchedTools = await fetchTools()
+            setTools(fetchedTools)
+        }
+        loadTools().then(r => {})
+    }, [])
 
 
     function deleteAgent(id: number) {
@@ -73,6 +87,7 @@ export default function Home() {
                             agent={agent}
                             onUpdate={(newConfig) => updateAgent(agent.id, newConfig)}
                             onDelete={() => deleteAgent(agent.id)}
+                            tools={tools}
                         />
                     </div>
                 ))}

@@ -55,9 +55,10 @@ type AgentCardProps = {
     agent: AgentConfig
     onUpdate: (newConfig: Partial<AgentConfig>) => void
     onDelete: () => void
+    tools: string[]
 }
 
-export default function AgentCard({ agent, onUpdate, onDelete }: AgentCardProps) {
+export default function AgentCard({ agent, onUpdate, onDelete, tools }: AgentCardProps) {
     const [isOpen, setIsOpen] = useState(true)
 
     const form = useForm<z.infer<typeof FormSchema>>({
@@ -74,6 +75,7 @@ export default function AgentCard({ agent, onUpdate, onDelete }: AgentCardProps)
         onUpdate(data)
         setIsOpen(false) // collapse after save
     }
+
 
     if (!isOpen) {
         // 🔹 Closed State
@@ -227,9 +229,11 @@ export default function AgentCard({ agent, onUpdate, onDelete }: AgentCardProps)
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                                <SelectItem value="Gmail">Gmail</SelectItem>
-                                                <SelectItem value="Notion">Notion</SelectItem>
-                                                <SelectItem value="Slack">Slack</SelectItem>
+                                                {tools.map((tool: string) => (
+                                                    <SelectItem key={tool} value={tool}>
+                                                        {tool}
+                                                    </SelectItem>
+                                                ))}
                                             </SelectContent>
                                         </Select>
                                         <FormMessage />
