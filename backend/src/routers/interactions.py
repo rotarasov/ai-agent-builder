@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import logging
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
-from src.routers.agents import AgentStatus, agents_db
+from src.routers.agents import AgentStatus
 
 
 # Configure logging
