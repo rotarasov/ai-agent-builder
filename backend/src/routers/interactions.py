@@ -19,18 +19,16 @@ class Message(BaseModel):
     role: str = Field(..., description="Message role (user, assistant, system)")
     content: str = Field(..., description="Message content")
     timestamp: Optional[datetime] = Field(None, description="Message timestamp")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
+    # metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
 
-class InteractionRequest(BaseModel):
+class ConversationRequest(BaseModel):
     """Request model for agent interaction"""
-    agent_id: str = Field(..., description="Agent ID to interact with")
     message: str = Field(..., description="User message", min_length=1)
-    conversation_id: Optional[str] = Field(None, description="Conversation ID for context")
-    context: Optional[Dict[str, Any]] = Field(None, description="Additional context")
+    # context: Optional[Dict[str, Any]] = Field(None, description="Additional context")
 
 
-class InteractionResponse(BaseModel):
+class ConversationResponse(BaseModel):
     """Response model for agent interaction"""
     success: bool = Field(..., description="Interaction success status")
     message: str = Field(..., description="Response message")
@@ -41,8 +39,8 @@ class InteractionResponse(BaseModel):
 
 class Conversation(BaseModel):
     """Conversation model"""
-    id: Optional[str] = Field(None, description="Conversation ID")
-    agent_id: str = Field(..., description="Agent ID")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Conversation ID")
+    # agent_id: str = Field(..., description="Agent ID")
     messages: List[Message] = Field(default_factory=list, description="Conversation messages")
     created_at: Optional[datetime] = Field(None, description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
@@ -75,8 +73,8 @@ conversations_db: dict[str, Conversation] = {}
 action_logs_db: dict[str, ActionLog] = {}
 
 
-@router.post("/interactions", response_model=InteractionResponse)
-async def interact_with_agent(request: InteractionRequest):
+@router.post("/conversations", response_model=ConversationResponse)
+async def start_conversation(request: ConversationRequest):
     """
     Send a message to an agent and get a response.
     
@@ -85,32 +83,13 @@ async def interact_with_agent(request: InteractionRequest):
     logs all interactions for future reference.
     """
     try:
-        # Validate agent exists and is deployed
-        if request.agent_id not in agents_db:
-            raise HTTPException(status_code=404, detail=f"Agent {request.agent_id} not found")
-        
-        agent = agents_db[request.agent_id]
-        
-        if agent.status != AgentStatus.DEPLOYED:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Agent {request.agent_id} is not deployed and cannot receive interactions"
-            )
-        
-        # Get or create conversation
-        conversation_id = request.conversation_id or str(uuid.uuid4())
-        
-        if conversation_id not in conversations_db:
-            conversation = Conversation(
-                id=conversation_id,
-                agent_id=request.agent_id,
-                messages=[],
-                created_at=datetime.now(timezone.utc),
-                updated_at=datetime.now(timezone.utc)
-            )
-            conversations_db[conversation_id] = conversation
-        else:
-            conversation = conversations_db[conversation_id]
+        conversation = Conversation(
+            # agent_id=request.agent_id,
+            messages=[],
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
+        )
+        conversations_db[conversation.id] = conversation
         
         # Add user message to conversation
         user_message = Message(
@@ -121,21 +100,21 @@ async def interact_with_agent(request: InteractionRequest):
         conversation.messages.append(user_message)
         
         # Log the interaction
-        action_log = ActionLog(
-            id=str(uuid.uuid4()),
-            agent_id=request.agent_id,
-            conversation_id=conversation_id,
-            action="user_message",
-            input_data={
-                "message": request.message,
-                "context": request.context or {}
-            },
-            output_data={},
-            error_message=None,
-            timestamp=datetime.now(timezone.utc),
-            success=True
-        )
-        action_logs_db[action_log.id] = action_log
+        # action_log = ActionLog(
+        #     id=str(uuid.uuid4()),
+        #     agent_id=request.agent_id,
+        #     conversation_id=conversation_id,
+        #     action="user_message",
+        #     input_data={
+        #         "message": request.message,
+        #         "context": request.context or {}
+        #     },
+        #     output_data={},
+        #     error_message=None,
+        #     timestamp=datetime.now(timezone.utc),
+        #     success=True
+        # )
+        # action_logs_db[action_log.id] = action_log
         
         # TODO: Implement actual LLM interaction
         # This would involve:
@@ -145,7 +124,8 @@ async def interact_with_agent(request: InteractionRequest):
         # 4. Handling tool calls if the agent has tools
         
         # For now, simulate agent response
-        agent_response_content = f"Hello! I'm {agent.config.name}. You said: '{request.message}'. How can I help you further?"
+        # Response should come from orchestrator. Change for a better name.
+        agent_response_content = f"Hello! I'm Orchestrator. You said: '{request.message}'. How can I help you further?"
         
         # Add agent response to conversation
         agent_message = Message(
@@ -157,48 +137,47 @@ async def interact_with_agent(request: InteractionRequest):
         
         # Update conversation timestamp
         conversation.updated_at = datetime.now(timezone.utc)
-        conversations_db[conversation_id] = conversation
         
         # Log the agent response
-        response_log = ActionLog(
-            id=str(uuid.uuid4()),
-            agent_id=request.agent_id,
-            conversation_id=conversation_id,
-            action="agent_response",
-            input_data={
-                "prompt": request.message,
-                "system_prompt": agent.config.system_prompt
-            },
-            output_data={
-                "response": agent_response_content,
-                "usage": {"tokens": len(agent_response_content.split())}  # Simplified token count
-            },
-            timestamp=datetime.now(timezone.utc),
-            success=True,
-            error_message=None
-        )
-        action_logs_db[response_log.id] = response_log
+        # response_log = ActionLog(
+        #     id=str(uuid.uuid4()),
+        #     agent_id=request.agent_id,
+        #     conversation_id=conversation_id,
+        #     action="agent_response",
+        #     input_data={
+        #         "prompt": request.message,
+        #         "system_prompt": agent.config.system_prompt
+        #     },
+        #     output_data={
+        #         "response": agent_response_content,
+        #         "usage": {"tokens": len(agent_response_content.split())}  # Simplified token count
+        #     },
+        #     timestamp=datetime.now(timezone.utc),
+        #     success=True,
+        #     error_message=None
+        # )
+        # action_logs_db[response_log.id] = response_log
         
-        logger.info(f"Processed interaction for agent {request.agent_id} in conversation {conversation_id}")
+        logger.info(f"Processed interaction in conversation {conversation.id}")
         
-        return InteractionResponse(
+        return ConversationResponse(
             success=True,
-            message="Interaction completed successfully",
+            message="Conversation started successfully",
             agent_response=agent_response_content,
-            conversation_id=conversation_id,
-            usage={"tokens": len(agent_response_content.split())}
+            conversation_id=conversation.id,
+            # TODO: Add proper token usage
+            usage={"tokens": None}
         )
     
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error processing interaction: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to process interaction: {str(e)}")
 
 
 @router.get("/conversations", response_model=ConversationListResponse)
 async def list_conversations(
-    agent_id: Optional[str] = Query(None, description="Filter by agent ID"),
+    # agent_id: Optional[str] = Query(None, description="Filter by agent ID"),
     skip: int = Query(0, ge=0, description="Number of conversations to skip"),
     limit: int = Query(10, ge=1, le=100, description="Number of conversations to return")
 ):
@@ -211,8 +190,8 @@ async def list_conversations(
     try:
         # Filter conversations by agent_id if provided
         filtered_conversations = list(conversations_db.values())
-        if agent_id:
-            filtered_conversations = [conv for conv in filtered_conversations if conv.agent_id == agent_id]
+        # if agent_id:
+        #     filtered_conversations = [conv for conv in filtered_conversations if conv.agent_id == agent_id]
         
         # Sort by updated_at descending (most recent first)
         filtered_conversations.sort(key=lambda x: x.updated_at or datetime.min, reverse=True)
@@ -252,7 +231,6 @@ async def get_conversation(conversation_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error retrieving conversation {conversation_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to retrieve conversation: {str(e)}")
 
 
@@ -278,96 +256,95 @@ async def delete_conversation(conversation_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting conversation {conversation_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to delete conversation: {str(e)}")
 
 
-@router.get("/agents/{agent_id}/logs")
-async def get_agent_action_logs(
-    agent_id: str,
-    skip: int = Query(0, ge=0, description="Number of logs to skip"),
-    limit: int = Query(50, ge=1, le=1000, description="Number of logs to return"),
-    action: Optional[str] = Query(None, description="Filter by action type")
-):
-    """
-    Retrieve action logs for a specific agent.
+# @router.get("/agents/{agent_id}/logs")
+# async def get_agent_action_logs(
+#     agent_id: str,
+#     skip: int = Query(0, ge=0, description="Number of logs to skip"),
+#     limit: int = Query(50, ge=1, le=1000, description="Number of logs to return"),
+#     action: Optional[str] = Query(None, description="Filter by action type")
+# ):
+#     """
+#     Retrieve action logs for a specific agent.
     
-    This endpoint provides access to the agent's action history
-    for context management and debugging purposes.
-    """
-    try:
-        # Validate agent exists
-        if agent_id not in agents_db:
-            raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+#     This endpoint provides access to the agent's action history
+#     for context management and debugging purposes.
+#     """
+#     try:
+#         # Validate agent exists
+#         if agent_id not in agents_db:
+#             raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
         
-        # Filter logs by agent_id
-        agent_logs = [log for log in action_logs_db.values() if log.agent_id == agent_id]
+#         # Filter logs by agent_id
+#         agent_logs = [log for log in action_logs_db.values() if log.agent_id == agent_id]
         
-        # Filter by action if provided
-        if action:
-            agent_logs = [log for log in agent_logs if log.action == action]
+#         # Filter by action if provided
+#         if action:
+#             agent_logs = [log for log in agent_logs if log.action == action]
         
-        # Sort by timestamp descending (most recent first)
-        agent_logs.sort(key=lambda x: x.timestamp or datetime.min, reverse=True)
+#         # Sort by timestamp descending (most recent first)
+#         agent_logs.sort(key=lambda x: x.timestamp or datetime.min, reverse=True)
         
-        # Apply pagination
-        total = len(agent_logs)
-        logs_page = agent_logs[skip:skip + limit]
+#         # Apply pagination
+#         total = len(agent_logs)
+#         logs_page = agent_logs[skip:skip + limit]
         
-        return {
-            "success": True,
-            "message": f"Retrieved {len(logs_page)} action logs",
-            "logs": logs_page,
-            "total": total
-        }
+#         return {
+#             "success": True,
+#             "message": f"Retrieved {len(logs_page)} action logs",
+#             "logs": logs_page,
+#             "total": total
+#         }
     
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error retrieving logs for agent {agent_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve agent logs: {str(e)}")
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         logger.error(f"Error retrieving logs for agent {agent_id}: {str(e)}")
+#         raise HTTPException(status_code=500, detail=f"Failed to retrieve agent logs: {str(e)}")
 
 
-@router.get("/conversations/{conversation_id}/context")
-async def get_conversation_context(conversation_id: str):
-    """
-    Get conversation context for an agent.
+# @router.get("/conversations/{conversation_id}/context")
+# async def get_conversation_context(conversation_id: str):
+#     """
+#     Get conversation context for an agent.
     
-    This endpoint provides the conversation history and context
-    that can be used by the orchestrator to manage agent interactions.
-    """
-    try:
-        if conversation_id not in conversations_db:
-            raise HTTPException(status_code=404, detail=f"Conversation {conversation_id} not found")
+#     This endpoint provides the conversation history and context
+#     that can be used by the orchestrator to manage agent interactions.
+#     """
+#     try:
+#         if conversation_id not in conversations_db:
+#             raise HTTPException(status_code=404, detail=f"Conversation {conversation_id} not found")
         
-        conversation = conversations_db[conversation_id]
+#         conversation = conversations_db[conversation_id]
         
-        # Get related action logs
-        conversation_logs = [
-            log for log in action_logs_db.values() 
-            if log.conversation_id == conversation_id
-        ]
-        conversation_logs.sort(key=lambda x: x.timestamp or datetime.min)
+#         # Get related action logs
+#         conversation_logs = [
+#             log for log in action_logs_db.values() 
+#             if log.conversation_id == conversation_id
+#         ]
+#         conversation_logs.sort(key=lambda x: x.timestamp or datetime.min)
         
-        # Build context
-        context = {
-            "conversation_id": conversation_id,
-            "agent_id": conversation.agent_id,
-            "message_count": len(conversation.messages),
-            "last_activity": conversation.updated_at,
-            "messages": conversation.messages,
-            "action_logs": conversation_logs,
-            "metadata": conversation.metadata
-        }
+#         # Build context
+#         context = {
+#             "conversation_id": conversation_id,
+#             "agent_id": conversation.agent_id,
+#             "message_count": len(conversation.messages),
+#             "last_activity": conversation.updated_at,
+#             "messages": conversation.messages,
+#             "action_logs": conversation_logs,
+#             "metadata": conversation.metadata
+#         }
         
-        return {
-            "success": True,
-            "message": "Context retrieved successfully",
-            "context": context
-        }
+#         return {
+#             "success": True,
+#             "message": "Context retrieved successfully",
+#             "context": context
+#         }
     
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error retrieving context for conversation {conversation_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve conversation context: {str(e)}")
+#     except HTTPException:
+#         raise
+#     except Exception as e:
+#         logger.error(f"Error retrieving context for conversation {conversation_id}: {str(e)}")
+#         raise HTTPException(status_code=500, detail=f"Failed to retrieve conversation context: {str(e)}")
