@@ -12,5 +12,11 @@ class Config(BaseSettings):
     swiss_ai_platform_base_url: str = os.getenv("SWISS_AI_PLATFORM_BASE_URL", "https://api.swisscom.com/layer/swiss-ai-weeks/apertus-70b/v1")
     leapcell_api_key: str = os.getenv("LEAPCELL_API_KEY", "<leapcell_api_key>")
     composio_api_key: str = os.getenv("COMPOSIO_API_KEY", "<composio_api_key>")
+    supabase_url: str = os.environ["SUPABASE_URL"]
+    supabase_key: str = os.environ["SUPABASE_KEY"]
+    supabase_user: str = os.environ["SUPABASE_USER"]
+    supabase_password: str = os.environ["SUPABASE_PASSWORD"]
+    agents_table_name: str = os.environ["AGENTS_TABLE_NAME"]
+    agents_set_table_name: str = os.environ["AGENTS_SET_TABLE_NAME"]
 
 config = Config()
