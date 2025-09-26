@@ -16,10 +16,8 @@ router = APIRouter()
 
 class LLMProvider(str, Enum):
     """Supported LLM providers"""
+    APERTUS = "apertus"
     OPENAI = "openai"
-    ANTHROPIC = "anthropic"
-    GOOGLE = "google"
-    AZURE_OPENAI = "azure_openai"
 
 
 class AgentStatus(str, Enum):
@@ -47,17 +45,24 @@ class AgentConfig(BaseModel):
 
 class Agent(BaseModel):
     """Agent model with database fields"""    
-    id: Optional[str] = Field(None, description="Agent ID")
+    id: str = Field(description="Agent ID")
     config: AgentConfig = Field(..., description="Agent configuration")
     status: AgentStatus = Field(AgentStatus.DRAFT, description="Agent status")
     created_at: Optional[datetime] = Field(None, description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
-    deployment_url: Optional[str] = Field(None, description="Deployment URL if deployed")
 
 
-class CreateAgentRequest(BaseModel):
+class AgentSet(BaseModel):
+    """Agent set model"""
+    id: str = Field(description="Agent set ID")
+    agents: List[Agent] = Field(..., description="List of agents")
+    created_at: Optional[datetime] = Field(None, description="Creation timestamp")
+    updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
+
+
+class CreateAgentSetRequest(BaseModel):
     """Request model for creating an agent"""
-    config: AgentConfig = Field(..., description="Agent configuration")
+    configs: List[AgentConfig] = Field(..., description="Agent configuration")
 
 
 class UpdateAgentRequest(BaseModel):
@@ -73,19 +78,31 @@ class AgentResponse(BaseModel):
     agent: Optional[Agent] = Field(None, description="Agent data")
 
 
-class AgentListResponse(BaseModel):
+class AgentSetResponse(BaseModel):
     """Response model for listing agents"""
     success: bool = Field(..., description="Operation success status")
     message: str = Field(..., description="Response message")
-    agents: List[Agent] = Field(..., description="List of agents")
-    total: int = Field(..., description="Total number of agents")
+    agent_set: AgentSet = Field(..., description="Agent set")
+
+
+class UpdateAgentSetRequest(BaseModel):
+    """Request model for updating an agent set"""
+    agent_set: Optional[AgentSet] = Field(None, description="Updated agent set configuration")
+
+
+class AgentSetListResponse(BaseModel):
+    """Response model for listing agent sets"""
+    success: bool = Field(..., description="Operation success status")
+    message: str = Field(..., description="Response message")
+    agent_sets: List[AgentSet] = Field(..., description="List of agent sets")
+    total: int = Field(..., description="Total number of agent sets")
 
 
 # In-memory storage for demo purposes (replace with actual database)
-agents_db: dict[str, Agent] = {}
+agent_sets_db: dict[str, AgentSet] = {}
 
-@router.post("/agents", response_model=AgentResponse)
-async def create_agent(request: CreateAgentRequest):
+@router.post("/agent-sets/", response_model=AgentSetResponse)
+async def create_agent_set(request: CreateAgentSetRequest):
     """
     Create a new AI agent with the specified configuration.
     
@@ -93,36 +110,39 @@ async def create_agent(request: CreateAgentRequest):
     including LLM provider, model, system prompt, and other settings.
     """
     try:
-        # Generate unique ID for the agent
-        agent_id = str(uuid.uuid4())
+        agent_set_id = str(uuid.uuid4())
         
-        # Create agent instance
-        agent = Agent(
-            id=agent_id,
-            config=request.config,
-            status=AgentStatus.DRAFT,
+        # Create agent instances
+        agents = [Agent(
+            id=str(uuid.uuid4()),
+            config=config,
+            status=AgentStatus.ACTIVE,
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc),
-            deployment_url=None
-        )
+        ) for config in request.configs]
         
         # Store in database (replace with actual DB operations)
-        agents_db[agent_id] = agent
+        agent_sets_db[agent_set_id] = AgentSet(
+            id=agent_set_id,
+            agents=agents,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
+        )
         
-        logger.info(f"Created agent {agent_id} with name '{request.config.name}'")
+        logger.info(f"Created agent set: {agent_set_id}")
         
-        return AgentResponse(
+        return AgentSetResponse(
             success=True,
-            message=f"Agent '{request.config.name}' created successfully",
-            agent=agent
+            message=f"Created {len(agents)} agents.",
+            agent_set=agent_sets_db[agent_set_id]
         )
     
     except Exception as e:
-        logger.error(f"Error creating agent: {str(e)}")
+        logger.error(f"Error creating agent set: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to create agent: {str(e)}")
 
 
-@router.get("/agents", response_model=AgentListResponse)
+@router.get("/agent-sets", response_model=AgentSetResponse)
 async def list_agents(
     skip: int = Query(0, ge=0, description="Number of agents to skip"),
     limit: int = Query(10, ge=1, le=100, description="Number of agents to return"),
@@ -135,19 +155,23 @@ async def list_agents(
     the number of results returned.
     """
     try:
-        # Filter agents by status if provided
-        filtered_agents = list(agents_db.values())
+        # Filter agent sets by status if provided
+        filtered_agent_sets = list(agent_sets_db.values())
         if status:
-            filtered_agents = [agent for agent in filtered_agents if agent.status == status]
+            # Filter agent sets that contain agents with the specified status
+            filtered_agent_sets = [
+                agent_set for agent_set in filtered_agent_sets 
+                if any(agent.status == status for agent in agent_set.agents)
+            ]
         
         # Apply pagination
-        total = len(filtered_agents)
-        agents_page = filtered_agents[skip:skip + limit]
+        total = len(filtered_agent_sets)
+        agent_sets_page = filtered_agent_sets[skip:skip + limit]
         
-        return AgentListResponse(
+        return AgentSetListResponse(
             success=True,
-            message=f"Retrieved {len(agents_page)} agents",
-            agents=agents_page,
+            message=f"Retrieved {len(agent_sets_page)} agent sets",
+            agent_sets=agent_sets_page,
             total=total
         )
     
@@ -156,8 +180,8 @@ async def list_agents(
         raise HTTPException(status_code=500, detail=f"Failed to list agents: {str(e)}")
 
 
-@router.get("/agents/{agent_id}", response_model=AgentResponse)
-async def get_agent(agent_id: str):
+@router.get("/agent-sets/{agent_set_id}", response_model=AgentSetResponse)
+async def get_agent_set(agent_set_id: str):
     """
     Retrieve a specific agent by its ID.
     
@@ -165,191 +189,90 @@ async def get_agent(agent_id: str):
     status, creation time, and deployment information.
     """
     try:
-        if agent_id not in agents_db:
-            raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+        if agent_set_id not in agent_sets_db:
+            raise HTTPException(status_code=404, detail=f"Agent set {agent_set_id} not found")
         
-        agent = agents_db[agent_id]
+        agent_set = agent_sets_db[agent_set_id]
         
-        return AgentResponse(
+        return AgentSetResponse(
             success=True,
-            message=f"Agent {agent_id} retrieved successfully",
-            agent=agent
+            message=f"Agent set {agent_set_id} retrieved successfully",
+            agent_set=agent_set
         )
     
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error retrieving agent {agent_id}: {str(e)}")
+        logger.error(f"Error retrieving agent set {agent_set_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to retrieve agent: {str(e)}")
 
 
-@router.put("/agents/{agent_id}", response_model=AgentResponse)
-async def update_agent(agent_id: str, request: UpdateAgentRequest):
+@router.put("/agent-sets/{agent_set_id}", response_model=AgentSetResponse)
+async def update_agent_set(agent_set_id: str, request: UpdateAgentSetRequest):
     """
-    Update an existing agent's configuration or status.
+    Update an existing agent set with new configuration.
     
-    You can update the agent's configuration, change its status,
-    or both. Only provided fields will be updated.
+    This endpoint allows you to update an agent set's configuration,
+    including adding, removing, or modifying agents within the set.
     """
     try:
-        if agent_id not in agents_db:
-            raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+        if agent_set_id not in agent_sets_db:
+            raise HTTPException(status_code=404, detail=f"Agent set {agent_set_id} not found")
         
-        agent = agents_db[agent_id]
+        if request.agent_set is None:
+            raise HTTPException(status_code=400, detail="Agent set configuration is required")
         
-        # Update configuration if provided
-        if request.config:
-            agent.config = request.config
+        # Update the agent set
+        updated_agent_set = request.agent_set.model_copy()
+        updated_agent_set.id = agent_set_id  # Ensure ID consistency
+        updated_agent_set.updated_at = datetime.now(timezone.utc)
         
-        # Update status if provided
-        if request.status:
-            agent.status = request.status
+        # Store updated agent set
+        agent_sets_db[agent_set_id] = updated_agent_set
         
-        # Update timestamp
-        agent.updated_at = datetime.now(timezone.utc)
+        logger.info(f"Updated agent set: {agent_set_id}")
         
-        # Save updated agent
-        agents_db[agent_id] = agent
-        
-        logger.info(f"Updated agent {agent_id}")
-        
-        return AgentResponse(
+        return AgentSetResponse(
             success=True,
-            message=f"Agent {agent_id} updated successfully",
-            agent=agent
+            message=f"Agent set {agent_set_id} updated successfully",
+            agent_set=updated_agent_set
         )
     
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error updating agent {agent_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to update agent: {str(e)}")
+        logger.error(f"Error updating agent set {agent_set_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update agent set: {str(e)}")
 
 
-@router.delete("/agents/{agent_id}", response_model=AgentResponse)
-async def delete_agent(agent_id: str):
+@router.delete("/agent-sets/{agent_set_id}", response_model=AgentSetResponse)
+async def delete_agent_set(agent_set_id: str):
     """
-    Delete an agent by its ID.
+    Delete an agent set and all its associated agents.
     
-    This will permanently remove the agent and all its associated data.
-    Use with caution as this operation cannot be undone.
+    This endpoint permanently removes an agent set from the system.
+    This action cannot be undone.
     """
     try:
-        if agent_id not in agents_db:
-            raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
+        if agent_set_id not in agent_sets_db:
+            raise HTTPException(status_code=404, detail=f"Agent set {agent_set_id} not found")
         
-        agent = agents_db[agent_id]
+        # Get the agent set before deletion for response
+        agent_set = agent_sets_db[agent_set_id]
         
         # Remove from database
-        del agents_db[agent_id]
+        del agent_sets_db[agent_set_id]
         
-        logger.info(f"Deleted agent {agent_id}")
+        logger.info(f"Deleted agent set: {agent_set_id}")
         
-        return AgentResponse(
+        return AgentSetResponse(
             success=True,
-            message=f"Agent {agent_id} deleted successfully",
-            agent=agent
+            message=f"Agent set {agent_set_id} deleted successfully",
+            agent_set=agent_set
         )
     
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting agent {agent_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to delete agent: {str(e)}")
-
-
-@router.post("/agents/{agent_id}/deploy", response_model=AgentResponse)
-async def deploy_agent(agent_id: str):
-    """
-    Deploy an agent to make it available for interactions.
-    
-    This endpoint handles the serverless deployment of the agent,
-    including LLM interaction functions and orchestration.
-    """
-    try:
-        if agent_id not in agents_db:
-            raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
-        
-        agent = agents_db[agent_id]
-        
-        # Check if agent is ready for deployment
-        if agent.status == AgentStatus.DEPLOYED:
-            return AgentResponse(
-                success=True,
-                message=f"Agent {agent_id} is already deployed",
-                agent=agent
-            )
-        
-        # TODO: Implement actual deployment logic
-        # This would involve:
-        # 1. Validating agent configuration
-        # 2. Setting up serverless functions
-        # 3. Configuring LLM provider connections
-        # 4. Setting up orchestration
-        
-        # For now, simulate deployment
-        deployment_url = f"https://api.agents.com/deployed/{agent_id}"
-        agent.status = AgentStatus.DEPLOYED
-        agent.deployment_url = deployment_url
-        agent.updated_at = datetime.now(timezone.utc)
-        
-        agents_db[agent_id] = agent
-        
-        logger.info(f"Deployed agent {agent_id} to {deployment_url}")
-        
-        return AgentResponse(
-            success=True,
-            message=f"Agent {agent_id} deployed successfully",
-            agent=agent
-        )
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error deploying agent {agent_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to deploy agent: {str(e)}")
-
-
-@router.post("/agents/{agent_id}/undeploy", response_model=AgentResponse)
-async def undeploy_agent(agent_id: str):
-    """
-    Undeploy an agent and make it inactive.
-    
-    This will stop the agent's serverless functions and make it
-    unavailable for new interactions.
-    """
-    try:
-        if agent_id not in agents_db:
-            raise HTTPException(status_code=404, detail=f"Agent {agent_id} not found")
-        
-        agent = agents_db[agent_id]
-        
-        if agent.status != AgentStatus.DEPLOYED:
-            return AgentResponse(
-                success=True,
-                message=f"Agent {agent_id} is not currently deployed",
-                agent=agent
-            )
-        
-        # TODO: Implement actual undeployment logic
-        # This would involve tearing down serverless functions
-        
-        agent.status = AgentStatus.INACTIVE
-        agent.deployment_url = None
-        agent.updated_at = datetime.now(timezone.utc)
-        
-        agents_db[agent_id] = agent
-        
-        logger.info(f"Undeployed agent {agent_id}")
-        
-        return AgentResponse(
-            success=True,
-            message=f"Agent {agent_id} undeployed successfully",
-            agent=agent
-        )
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error undeploying agent {agent_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to undeploy agent: {str(e)}")
+        logger.error(f"Error deleting agent set {agent_set_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete agent set: {str(e)}")
