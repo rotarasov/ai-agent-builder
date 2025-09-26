@@ -31,15 +31,33 @@ import {
     FormLabel,
     FormMessage,
 } from "@/components/ui/form"
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel,
+    AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger
+} from "@/components/ui/alert-dialog";
+import {AgentConfig} from "@/types/agent";
+
+
+
 
 const FormSchema = z.object({
     name: z.string().min(1, "Name is required"),
     description: z.string().min(1, "Description is required"),
+    prompt: z.string().min(1, "Instruction is required"),
     model: z.string({ message: "Please select a model" }),
     toolkit: z.string().optional(),
 })
 
-export default function AgentCard() {
+type AgentCardProps = {
+    agent: AgentConfig
+    onUpdate: (newConfig: Partial<AgentConfig>) => void
+    onDelete: () => void
+}
+
+export default function AgentCard({ agent, onUpdate, onDelete }: AgentCardProps) {
     const [isOpen, setIsOpen] = useState(true)
 
     const form = useForm<z.infer<typeof FormSchema>>({
@@ -53,13 +71,7 @@ export default function AgentCard() {
     })
 
     function onSubmit(data: z.infer<typeof FormSchema>) {
-        toast("Agent saved", {
-            description: (
-                <pre className="mt-2 w-[320px] rounded-md bg-neutral-950 p-4">
-          <code className="text-white">{JSON.stringify(data, null, 2)}</code>
-        </pre>
-            ),
-        })
+        onUpdate(data)
         setIsOpen(false) // collapse after save
     }
 
@@ -90,6 +102,34 @@ export default function AgentCard() {
                             Fill in the details to configure your agent
                         </CardDescription>
                         <CardAction>
+                            {/* 🔹 Delete with confirmation */}
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button className="text-lg" variant="ghost" type="button">
+                                        🗑️
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>
+                                            Delete this agent?
+                                        </AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This action cannot be undone. The agent and its
+                                            configuration will be permanently removed.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                            className="bg-red-600 hover:bg-red-700"
+                                            onClick={onDelete}
+                                        >
+                                            Delete
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                             <Button type="submit">Save</Button>
                         </CardAction>
                     </CardHeader>
@@ -118,6 +158,23 @@ export default function AgentCard() {
                                     <FormControl>
                                         <Textarea
                                             placeholder="Describe what this Agent should do"
+                                            {...field}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="prompt"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Instructions (optional)</FormLabel>
+                                    <FormControl>
+                                        <Textarea
+                                            placeholder="Give this Agent specific instructions"
                                             {...field}
                                         />
                                     </FormControl>
