@@ -38,6 +38,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
+import {AgentConfig} from "@/types/agent";
 
 
 
@@ -45,16 +46,18 @@ import {
 const FormSchema = z.object({
     name: z.string().min(1, "Name is required"),
     description: z.string().min(1, "Description is required"),
+    prompt: z.string().min(1, "Instruction is required"),
     model: z.string({ message: "Please select a model" }),
     toolkit: z.string().optional(),
 })
 
 type AgentCardProps = {
+    agent: AgentConfig
+    onUpdate: (newConfig: Partial<AgentConfig>) => void
     onDelete: () => void
 }
 
-
-export default function AgentCard({ onDelete }: AgentCardProps) {
+export default function AgentCard({ agent, onUpdate, onDelete }: AgentCardProps) {
     const [isOpen, setIsOpen] = useState(true)
 
     const form = useForm<z.infer<typeof FormSchema>>({
@@ -68,13 +71,7 @@ export default function AgentCard({ onDelete }: AgentCardProps) {
     })
 
     function onSubmit(data: z.infer<typeof FormSchema>) {
-        toast("Agent saved", {
-            description: (
-                <pre className="mt-2 w-[320px] rounded-md bg-neutral-950 p-4">
-          <code className="text-white">{JSON.stringify(data, null, 2)}</code>
-        </pre>
-            ),
-        })
+        onUpdate(data)
         setIsOpen(false) // collapse after save
     }
 
@@ -161,6 +158,23 @@ export default function AgentCard({ onDelete }: AgentCardProps) {
                                     <FormControl>
                                         <Textarea
                                             placeholder="Describe what this Agent should do"
+                                            {...field}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="prompt"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Instructions (optional)</FormLabel>
+                                    <FormControl>
+                                        <Textarea
+                                            placeholder="Give this Agent specific instructions"
                                             {...field}
                                         />
                                     </FormControl>
