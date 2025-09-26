@@ -69,7 +69,13 @@ const MessageBubble = ({ msg, formatTime }: any) => {
     );
 };
 
-export default function ChatPage() {
+export default function ChatPage(
+    {
+        params,
+    }: {
+        params: Promise<{ slug: string }>
+    }
+) {
     const [messages, setMessages] = useState<Message[]>(initialMessages);
     const [input, setInput] = useState("");
     const [isTyping, setIsTyping] = useState(false);
@@ -77,6 +83,17 @@ export default function ChatPage() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const [slug , setSlug] = useState("")
+
+    useEffect(() => {
+        const getSlug = async () => {
+            const resolvedParams = await params;
+            setSlug(resolvedParams.slug);
+        };
+        getSlug().then();
+    }, [params]);
+
+    console.log(slug)
 
     // Auto-scroll to bottom with smooth behavior
     const scrollToBottom = useCallback(() => {
@@ -168,7 +185,7 @@ export default function ChatPage() {
             <div className="fixed bottom-4 right-4 z-50">
                 <div
                     className="p-2 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-                    <QRCode data="https://tinopurmann.com"/>
+                    <QRCode data={`https://ai-agent-builder-one.vercel.app/chat/${slug}`}/>
                 </div>
             </div>
 
