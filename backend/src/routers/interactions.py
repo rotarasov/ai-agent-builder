@@ -24,6 +24,13 @@ class Message(BaseModel):
 
 class ConversationRequest(BaseModel):
     """Request model for agent interaction"""
+    agent_set_id: str = Field(..., description="Agent set ID")
+    message: str = Field(..., description="User message", min_length=1)
+    # context: Optional[Dict[str, Any]] = Field(None, description="Additional context")
+
+
+class MessageRequest(BaseModel):
+    """Request model for sending a message to an existing conversation"""
     message: str = Field(..., description="User message", min_length=1)
     # context: Optional[Dict[str, Any]] = Field(None, description="Additional context")
 
@@ -40,7 +47,7 @@ class ConversationResponse(BaseModel):
 class Conversation(BaseModel):
     """Conversation model"""
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Conversation ID")
-    # agent_id: str = Field(..., description="Agent ID")
+    agent_set_id: str = Field(..., description="Agent set ID")
     messages: List[Message] = Field(default_factory=list, description="Conversation messages")
     created_at: Optional[datetime] = Field(None, description="Creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
@@ -84,7 +91,7 @@ async def start_conversation(request: ConversationRequest):
     """
     try:
         conversation = Conversation(
-            # agent_id=request.agent_id,
+            agent_set_id=request.agent_set_id,
             messages=[],
             created_at=datetime.now(timezone.utc),
             updated_at=datetime.now(timezone.utc)
@@ -177,7 +184,7 @@ async def start_conversation(request: ConversationRequest):
 
 @router.get("/conversations", response_model=ConversationListResponse)
 async def list_conversations(
-    # agent_id: Optional[str] = Query(None, description="Filter by agent ID"),
+    agent_set_id: Optional[str] = Query(None, description="Filter by agent set ID"),
     skip: int = Query(0, ge=0, description="Number of conversations to skip"),
     limit: int = Query(10, ge=1, le=100, description="Number of conversations to return")
 ):
@@ -190,8 +197,8 @@ async def list_conversations(
     try:
         # Filter conversations by agent_id if provided
         filtered_conversations = list(conversations_db.values())
-        # if agent_id:
-        #     filtered_conversations = [conv for conv in filtered_conversations if conv.agent_id == agent_id]
+        if agent_set_id:
+            filtered_conversations = [conv for conv in filtered_conversations if conv.agent_set_id == agent_set_id]
         
         # Sort by updated_at descending (most recent first)
         filtered_conversations.sort(key=lambda x: x.updated_at or datetime.min, reverse=True)
@@ -232,7 +239,7 @@ async def get_conversation(conversation_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to retrieve conversation: {str(e)}")
-
+        
 
 @router.delete("/conversations/{conversation_id}")
 async def delete_conversation(conversation_id: str):
@@ -257,6 +264,68 @@ async def delete_conversation(conversation_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete conversation: {str(e)}")
+
+
+@router.post("/conversations/{conversation_id}/messages", response_model=ConversationResponse)
+async def send_message(conversation_id: str, request: MessageRequest):
+    """
+    Send a message to an existing conversation.
+    
+    This endpoint allows you to continue an existing conversation by sending
+    a new message. The agent will process the message in the context of the
+    conversation history and return a response.
+    """
+    try:
+        # Validate conversation exists
+        if conversation_id not in conversations_db:
+            raise HTTPException(status_code=404, detail=f"Conversation {conversation_id} not found")
+        
+        conversation = conversations_db[conversation_id]
+        
+        # Add user message to conversation
+        user_message = Message(
+            role="user",
+            content=request.message,
+            timestamp=datetime.now(timezone.utc)
+        )
+        conversation.messages.append(user_message)
+        
+        # TODO: Implement actual LLM interaction with conversation context
+        # This would involve:
+        # 1. Preparing the prompt with system message and full conversation history
+        # 2. Calling the appropriate LLM provider (OpenAI, Anthropic, etc.)
+        # 3. Processing the response
+        # 4. Handling tool calls if the agent has tools
+        
+        # For now, simulate agent response with conversation context
+        agent_response_content = f"Hello! I'm Orchestrator. You said: '{request.message}'. This is message #{len(conversation.messages)} in our conversation. How can I help you further?"
+        
+        # Add agent response to conversation
+        agent_message = Message(
+            role="assistant",
+            content=agent_response_content,
+            timestamp=datetime.now(timezone.utc)
+        )
+        conversation.messages.append(agent_message)
+        
+        # Update conversation timestamp
+        conversation.updated_at = datetime.now(timezone.utc)
+        
+        logger.info(f"Processed message in conversation {conversation_id}")
+        
+        return ConversationResponse(
+            success=True,
+            message="Message sent successfully",
+            agent_response=agent_response_content,
+            conversation_id=conversation_id,
+            # TODO: Add proper token usage
+            usage={"tokens": None}
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to send message: {str(e)}")
 
 
 # @router.get("/agents/{agent_id}/logs")
