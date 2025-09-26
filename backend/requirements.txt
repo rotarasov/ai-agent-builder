@@ -7,3 +7,4 @@ pydantic
 pydantic-settings
 supabase
 supabase_auth
+composio-openai

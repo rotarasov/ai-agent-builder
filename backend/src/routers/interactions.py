@@ -5,7 +5,10 @@ from datetime import datetime, timezone
 import logging
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
-from src.routers.agents import AgentStatus
+
+from src.deps import ComposioClient
+from src.services.agent_handlers.orchestrator import orchestrator_completion, parse_orchestrator_response, AgentDescriptionForOrchestrator
+from src.database.supabase import get_agents_in_set, get_authenticated_client
 
 
 # Configure logging
@@ -81,7 +84,7 @@ action_logs_db: dict[str, ActionLog] = {}
 
 
 @router.post("/conversations", response_model=ConversationResponse)
-async def start_conversation(request: ConversationRequest):
+async def start_conversation(request: ConversationRequest, composio_client: ComposioClient):
     """
     Send a message to an agent and get a response.
     
@@ -89,6 +92,8 @@ async def start_conversation(request: ConversationRequest):
     and returns their responses. It handles conversation context and
     logs all interactions for future reference.
     """
+    supabase_client = get_authenticated_client()
+    
     try:
         conversation = Conversation(
             agent_set_id=request.agent_set_id,
@@ -123,16 +128,15 @@ async def start_conversation(request: ConversationRequest):
         # )
         # action_logs_db[action_log.id] = action_log
         
-        # TODO: Implement actual LLM interaction
-        # This would involve:
-        # 1. Preparing the prompt with system message and conversation history
-        # 2. Calling the appropriate LLM provider (OpenAI, Anthropic, etc.)
-        # 3. Processing the response
-        # 4. Handling tool calls if the agent has tools
+        agents = get_agents_in_set(request.agent_set_id, supabase_client)
+        name_to_id_mapping = {agent.config.name: agent.id for agent in agents}
+        agent_descriptions = [AgentDescriptionForOrchestrator(name=agent.name, description=agent.description, system_prompt=agent.system_prompt) for agent in agents]
+        orchestrator_response_str = orchestrator_completion(request.message, agent_descriptions)
+        agent_actions = parse_orchestrator_response(orchestrator_response_str)
+        for agent_action in agent_actions:
+            agent = agents[name_to_id_mapping[agent_action.agent_name]]
+            agent_response_content = agent.completion(agent_action.message)
         
-        # For now, simulate agent response
-        # Response should come from orchestrator. Change for a better name.
-        agent_response_content = f"Hello! I'm Orchestrator. You said: '{request.message}'. How can I help you further?"
         
         # Add agent response to conversation
         agent_message = Message(
