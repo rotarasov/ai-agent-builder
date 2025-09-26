@@ -10,3 +10,11 @@ $ pyenv install 3.13
 $ pyenv virtualenv 3.13 swiss-ai-hackathon
 $ pyenv activate swiss-ai-hackathon
 ```
+
+# Backend
+
+Create a `backend/src/.env` file and populate it with LLM provider keys:
+```bash
+OPENAI_KEY=<key>
+SWISS_AI_PLATFORM_API_KEY=<key>
+```

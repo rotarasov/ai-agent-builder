@@ -2,3 +2,6 @@ openai
 composio
 fastapi
 leapcell
+uvicorn[standard]
+pydantic
+pydantic-settings
