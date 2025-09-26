@@ -7,7 +7,14 @@ import {Separator} from "@/components/ui/separator";
 import {AgentConfig} from "@/types/agent"; // adjust path if needed
 
 export default function Home() {
-    const [agents, setAgents] = useState<AgentConfig[]>([0]) // store ids for cards
+    const [agents, setAgents] = useState<AgentConfig[]>([{
+        id: 0,
+        name: "",
+        description: "",
+        prompt: "",
+        model: "",
+        toolkit: "",
+    }]) // store ids for cards
     const [counter, setCounter] = useState(1) // unique keys
 
     function addNewAgent() {
@@ -36,7 +43,7 @@ export default function Home() {
 
 
     function deleteAgent(id: number) {
-        setAgents((prev) => prev.filter((agentId) => agentId !== id))
+        setAgents(prev => prev.filter(agent => agent.id !== id))
     }
 
     async function deployAgents() {
