@@ -13,13 +13,18 @@ export default function Home() {
         setCounter((prev) => prev + 1)
     }
 
+
+    function deleteAgent(id: number) {
+        setAgents((prev) => prev.filter((agentId) => agentId !== id))
+    }
+
     return (
         <div className="w-full flex flex-row p-12">
             <div className="w-1/2"></div>
             <div className="w-1/2">
                 {agents.map((id) => (
                     <div key={id} className="mb-6">
-                        <AgentCard />
+                        <AgentCard onDelete={() => deleteAgent(id)}/>
                     </div>
                 ))}
 

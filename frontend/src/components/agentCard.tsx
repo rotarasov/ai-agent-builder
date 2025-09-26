@@ -31,6 +31,16 @@ import {
     FormLabel,
     FormMessage,
 } from "@/components/ui/form"
+import {
+    AlertDialog, AlertDialogAction, AlertDialogCancel,
+    AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger
+} from "@/components/ui/alert-dialog";
+
+
+
 
 const FormSchema = z.object({
     name: z.string().min(1, "Name is required"),
@@ -39,7 +49,12 @@ const FormSchema = z.object({
     toolkit: z.string().optional(),
 })
 
-export default function AgentCard() {
+type AgentCardProps = {
+    onDelete: () => void
+}
+
+
+export default function AgentCard({ onDelete }: AgentCardProps) {
     const [isOpen, setIsOpen] = useState(true)
 
     const form = useForm<z.infer<typeof FormSchema>>({
@@ -90,6 +105,34 @@ export default function AgentCard() {
                             Fill in the details to configure your agent
                         </CardDescription>
                         <CardAction>
+                            {/* 🔹 Delete with confirmation */}
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button className="text-lg" variant="ghost" type="button">
+                                        🗑️
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>
+                                            Delete this agent?
+                                        </AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This action cannot be undone. The agent and its
+                                            configuration will be permanently removed.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                            className="bg-red-600 hover:bg-red-700"
+                                            onClick={onDelete}
+                                        >
+                                            Delete
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                             <Button type="submit">Save</Button>
                         </CardAction>
                     </CardHeader>
