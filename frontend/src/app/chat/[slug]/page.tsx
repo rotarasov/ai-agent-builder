@@ -12,6 +12,8 @@ type Message = {
     role: "user" | "assistant";
     content: string;
     timestamp: Date;
+    conversation_id?: string,
+    agent_set_id?: string,
 };
 
 const initialMessages: Message[] = [
@@ -69,7 +71,13 @@ const MessageBubble = ({ msg, formatTime }: any) => {
     );
 };
 
-export default function ChatPage() {
+export default function ChatPage(
+    {
+        params,
+    }: {
+        params: Promise<{ slug: string }>
+    }
+) {
     const [messages, setMessages] = useState<Message[]>(initialMessages);
     const [input, setInput] = useState("");
     const [isTyping, setIsTyping] = useState(false);
@@ -77,6 +85,18 @@ export default function ChatPage() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
+    const [slug , setSlug] = useState("")
+    const [conversationId , setConversationId] = useState("")
+
+    useEffect(() => {
+        const getSlug = async () => {
+            const resolvedParams = await params;
+            setSlug(resolvedParams.slug);
+        };
+        getSlug().then();
+    }, [params]);
+
+    console.log(slug)
 
     // Auto-scroll to bottom with smooth behavior
     const scrollToBottom = useCallback(() => {
@@ -110,27 +130,40 @@ export default function ChatPage() {
         // Keep focus on input
         inputRef.current?.focus();
 
-        // Simulate AI response with variable delay
-        const delay = 1000 + Math.random() * 1000;
-        setTimeout(() => {
-            const responses = [
-                "That's a fascinating perspective! Let me elaborate on that...",
-                "I'd be happy to help you with that! Here's what I found... 🚀",
-                "Great question! Based on my analysis...",
-                "Thanks for sharing! Here are some insights that might help...",
-                "Interesting point! Let me break this down for you...",
-            ];
+        // Send message to API
+        const response = await fetch('/api/send', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                agent_set_id: slug,
+                message: input.trim(),
+                conversation_id: conversationId || undefined
+            }),
+        });
 
-            const aiResponse: Message = {
-                id: Date.now() + 1,
-                role: "assistant",
-                content: responses[Math.floor(Math.random() * responses.length)],
-                timestamp: new Date(),
-            };
+        const data = await response.json();
 
-            setMessages(prev => [...prev, aiResponse]);
-            setIsTyping(false);
-        }, delay);
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to send message');
+        }
+
+        // Update conversation_id if this is a new conversation
+        if (data.conversation_id && !conversationId) {
+            setConversationId(data.conversation_id);
+        }
+
+        const aiResponse: Message = {
+            id: Date.now() + 1,
+            role: "assistant",
+            content: data.content,
+            timestamp: new Date(),
+        };
+
+        setMessages(prev => [...prev, aiResponse]);
+        setIsTyping(false);
+
     }, [input]);
 
     const formatTime = useCallback((date: Date) => {
@@ -168,7 +201,7 @@ export default function ChatPage() {
             <div className="fixed bottom-4 right-4 z-50">
                 <div
                     className="p-2 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-                    <QRCode data="https://tinopurmann.com"/>
+                    <QRCode data={`https://ai-agent-builder-one.vercel.app/chat/${slug}`}/>
                 </div>
             </div>
 

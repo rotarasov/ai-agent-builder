@@ -22,7 +22,6 @@ import {
 import { z } from "zod"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { toast } from "sonner"
 import {
     Form,
     FormControl,
@@ -46,9 +45,9 @@ import {AgentConfig} from "@/types/agent";
 const FormSchema = z.object({
     name: z.string().min(1, "Name is required"),
     description: z.string().min(1, "Description is required"),
-    prompt: z.string().min(1, "Instruction is required"),
-    model: z.string({ message: "Please select a model" }),
-    toolkit: z.string().optional(),
+    system_prompt: z.string().min(1, "Instruction is required"),
+    model_name: z.string({ message: "Please select a model" }),
+    tools: z.string().optional(),
 })
 
 type AgentCardProps = {
@@ -66,8 +65,8 @@ export default function AgentCard({ agent, onUpdate, onDelete, tools }: AgentCar
         defaultValues: {
             name: "",
             description: "",
-            model: "",
-            toolkit: "",
+            model_name: "",
+            tools: "",
         },
     })
 
@@ -170,7 +169,7 @@ export default function AgentCard({ agent, onUpdate, onDelete, tools }: AgentCar
 
                         <FormField
                             control={form.control}
-                            name="prompt"
+                            name="system_prompt"
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Instructions (optional)</FormLabel>
@@ -189,7 +188,7 @@ export default function AgentCard({ agent, onUpdate, onDelete, tools }: AgentCar
                         <div className="flex flex-row gap-2">
                             <FormField
                                 control={form.control}
-                                name="model"
+                                name="model_name"
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Model</FormLabel>
@@ -215,13 +214,13 @@ export default function AgentCard({ agent, onUpdate, onDelete, tools }: AgentCar
 
                             <FormField
                                 control={form.control}
-                                name="toolkit"
+                                name="tools"
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Tools (optional)</FormLabel>
                                         <Select
                                             onValueChange={field.onChange}
-                                            defaultValue={field.value}
+                                            defaultValue= ""
                                         >
                                             <FormControl>
                                                 <SelectTrigger>
