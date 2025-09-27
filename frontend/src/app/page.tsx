@@ -78,13 +78,14 @@ export default function Home() {
         setAgents(prev => prev.filter(agent => agent.id !== id))
     }
 
-    async function deployAgents() {
+    async function deployAgents(name:string) {
         try {
             const payload = {agents:
                     agents.map(({ id, tools, ...rest }) => ({
                 ...rest,
                 tools: Array.isArray(tools) ? tools : [tools], // wrap in array if needed
-            }))}
+            })),
+            name: name}
             console.log("data to deploy:", payload);
 
             const response = await fetch("/api/deploy", {
