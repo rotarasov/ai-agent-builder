@@ -17,7 +17,7 @@ def create_system_prompt_for_user_agent() -> str:
         "For example: {\"result\": \"Here is the weather for Zurich for tomorrow\"}"
     )
 
-def user_agent_completion(messages: list[str], composio_client: Composio, tools: list[str]) -> tuple[str, bool]:
+def user_agent_completion(orchestrator_message: str, composio_client: Composio, tools: list[str], transcript: list[dict[str, str]] | None = None) -> tuple[str, bool]:
     """
     Returns a tuple with the response and a boolean indicating if the user needs to authenticate.
     """

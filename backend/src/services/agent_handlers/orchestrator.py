@@ -52,9 +52,9 @@ class OrchestratorState(BaseModel):
     waiting_for_authentication: bool
     is_completed: bool
 
-def orchestrator_create_tasks(message: str, available_agents: list[Agent]) -> OrchestratorState:
+def orchestrator_create_tasks(message: str, available_agents: list[Agent], transcript: list[dict[str, str]] | None = None) -> OrchestratorState:
     system_prompt = create_orchestrator_system_prompt(available_agents)
-    messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": message}]
+    messages = (transcript or [{"role": "system", "content": system_prompt}]) + [{"role": "user", "content": message}]
     
     response = openai_llm.completion(messages)
     if "```json\n" not in response:
@@ -95,6 +95,7 @@ def orchestrator_execute_next_task(state: OrchestratorState, composio_client: Co
         
     agent_response, needs_authentication = user_agent_completion(state.messages_by_agent[agent_action.agent.uuid], composio_client, agent_action.agent.tools)
     state.messages_by_agent[agent_action.agent.uuid].append({"role": "assistant", "content": agent_response})
+    state.orchestrator_messages.append({"role": "tool", "content": agent_response})
     if needs_authentication:
         state.waiting_for_authentication = True
         # We need to wait for the authentication to complete before we can execute the next task

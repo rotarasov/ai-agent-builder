@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 
 from src.deps import ComposioClient
-from src.services.agent_handlers.orchestrator import orchestrator_create_tasks, orchestrator_execute_next_task, orchestrator_summarize_execution
+from src.services.agent_handlers.orchestrator import orchestrator_create_tasks, orchestrator_execute_next_task, orchestrator_summarize_execution, OrchestratorState
 from src.services.agent_handlers.user_agent import user_agent_completion
 from src.database.supabase import get_agents_in_set, get_authenticated_client
 from src.models.agents import Agent
@@ -81,6 +81,7 @@ class ActionLog(BaseModel):
 
 # In-memory storage for demo purposes (replace with actual database)
 conversations_db: dict[str, Conversation] = {}
+orchestrator_states_db: dict[str, OrchestratorState] = {}
 action_logs_db: dict[str, ActionLog] = {}
 
 
@@ -131,6 +132,7 @@ async def start_conversation(request: ConversationRequest, composio_client: Comp
         
         agents = [Agent(**agent) for agent in get_agents_in_set(request.agent_set_id, supabase_client)]
         orchestrator_state = orchestrator_create_tasks(request.message, agents)
+        orchestrator_states_db[conversation.id] = orchestrator_state
         if orchestrator_state.is_completed:
             # Means orchestrator answered the question itself
             return ConversationResponse(
@@ -195,7 +197,7 @@ async def start_conversation(request: ConversationRequest, composio_client: Comp
         return ConversationResponse(
             success=True,
             message="Conversation started successfully",
-            agent_response=agent_response_content,
+            agent_response=agent_message.content,
             conversation_id=conversation.id,
             # TODO: Add proper token usage
             usage={"tokens": None}
@@ -292,7 +294,7 @@ async def delete_conversation(conversation_id: str):
 
 
 @router.post("/conversations/{conversation_id}/messages", response_model=ConversationResponse)
-async def send_message(conversation_id: str, request: MessageRequest):
+async def send_message(conversation_id: str, request: MessageRequest, composio_client: ComposioClient):
     """
     Send a message to an existing conversation.
     
@@ -300,13 +302,24 @@ async def send_message(conversation_id: str, request: MessageRequest):
     a new message. The agent will process the message in the context of the
     conversation history and return a response.
     """
+    supabase_client = get_authenticated_client()
+    
     try:
         # Validate conversation exists
+        print(conversations_db)
         if conversation_id not in conversations_db:
             raise HTTPException(status_code=404, detail=f"Conversation {conversation_id} not found")
         
         conversation = conversations_db[conversation_id]
+        orchestrator_state = orchestrator_states_db[conversation_id]
         
+        # Clean the user agent messages because they are not needed anymore
+        agents = [Agent(**agent) for agent in get_agents_in_set(conversation.agent_set_id, supabase_client)]
+        if orchestrator_state.is_completed:
+            orchestrator_state = orchestrator_create_tasks(request.message, agents, orchestrator_state.orchestrator_messages)
+        else:
+            orchestrator_state.orchestrator_messages.append({"role": "user", "content": request.message})
+            orchestrator_state = orchestrator_create_tasks(request.message, agents, orchestrator_state.orchestrator_messages)
         # Add user message to conversation
         user_message = Message(
             role="user",
@@ -315,20 +328,29 @@ async def send_message(conversation_id: str, request: MessageRequest):
         )
         conversation.messages.append(user_message)
         
-        # TODO: Implement actual LLM interaction with conversation context
-        # This would involve:
-        # 1. Preparing the prompt with system message and full conversation history
-        # 2. Calling the appropriate LLM provider (OpenAI, Anthropic, etc.)
-        # 3. Processing the response
-        # 4. Handling tool calls if the agent has tools
-        
-        # For now, simulate agent response with conversation context
-        agent_response_content = f"Hello! I'm Orchestrator. You said: '{request.message}'. This is message #{len(conversation.messages)} in our conversation. How can I help you further?"
+        print(f"Orchestrator state: {orchestrator_state}")
+        while not orchestrator_state.is_completed:
+            orchestrator_state = orchestrator_execute_next_task(orchestrator_state, composio_client)
+            print(f"Orchestrator state: {orchestrator_state}")
+            
+            if orchestrator_state.waiting_for_authentication:
+                latest_agent_response = orchestrator_state.messages_by_agent[orchestrator_state.plan[orchestrator_state.next_agent_action_index].agent.uuid][-1]["content"]
+                conversation.messages.append(Message(role="assistant", content=latest_agent_response, timestamp=datetime.now(timezone.utc)))
+                conversation.updated_at = datetime.now(timezone.utc)
+                return ConversationResponse(
+                    success=True,
+                    message="User needs to authenticate",
+                    agent_response=latest_agent_response,
+                    conversation_id=conversation_id,
+                    usage={"tokens": None}
+                )
+            
+        summary = orchestrator_summarize_execution(orchestrator_state)
         
         # Add agent response to conversation
         agent_message = Message(
             role="assistant",
-            content=agent_response_content,
+            content=summary,
             timestamp=datetime.now(timezone.utc)
         )
         conversation.messages.append(agent_message)
@@ -341,7 +363,7 @@ async def send_message(conversation_id: str, request: MessageRequest):
         return ConversationResponse(
             success=True,
             message="Message sent successfully",
-            agent_response=agent_response_content,
+            agent_response=agent_message.content,
             conversation_id=conversation_id,
             # TODO: Add proper token usage
             usage={"tokens": None}
