@@ -172,7 +172,7 @@ export default function AgentCard({ agent, onUpdate, onDelete, tools }: AgentCar
                             name="system_prompt"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Instructions (optional)</FormLabel>
+                                    <FormLabel>Instructions</FormLabel>
                                     <FormControl>
                                         <Textarea
                                             placeholder="Give this Agent specific instructions"
