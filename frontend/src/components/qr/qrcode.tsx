@@ -11,7 +11,7 @@ export default function QRCode({data}: QRProps) {
     const { Canvas } = useQRCode();
 
     return (
-        <div className="flex flex-col items-center justify-center space-y-4">
+        <div className="hidden md:flex flex-col items-center justify-center space-y-4">
             <Canvas
                 text={data}
                 options={{
