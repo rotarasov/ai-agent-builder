@@ -1,6 +1,6 @@
 from composio.core.models import Tools
 
-from src.services.llm import apertus_llm, openai_llm
+from src.services.llm import openai_llm
 
 from composio import Composio
 
@@ -36,7 +36,7 @@ def user_agent_completion(orchestrator_message: str, composio_client: Composio, 
     tools = composio_client.tools.get(user_id=user_id, toolkits=toolkits_to_fetch)
 
     system_prompt = create_system_prompt_for_user_agent()
-    response = apertus_llm.completion(messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": orchestrator_message}], tools=tools)
+    response = openai_llm.completion(messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": orchestrator_message}], tools=tools)
     result = composio_client.provider.handle_tool_calls(user_id=user_id, response=response)
     return result, False
 
