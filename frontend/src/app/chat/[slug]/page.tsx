@@ -8,6 +8,7 @@ import { Send, Sparkles, Bot, User, Moon, Sun } from "lucide-react";
 import QRCode from "@/components/qr/qrcode";
 import IframeExportButton from "@/components/iframe/iframe";
 import Linkify from "linkify-react";
+import {useSearchParams} from "next/navigation";
 
 type Message = {
     id: number;
@@ -65,10 +66,8 @@ const MessageBubble = ({ msg, formatTime }: any) => {
 export default function ChatPage(
     {
         params,
-        searchParams,
     }: {
         params: Promise<{ slug: string, name: string }>,
-        searchParams: { name?: string }
     }
 ) {
     const [messages, setMessages] = useState<Message[]>(initialMessages);
@@ -82,12 +81,15 @@ export default function ChatPage(
     const [name , setName] = useState("Agentic AI Assistant")
     const [conversationId , setConversationId] = useState("")
 
+    const searchParams = useSearchParams();
+
     useEffect(() => {
         const getSlug = async () => {
             const resolvedParams = await params;
             setSlug(resolvedParams.slug);
-            if (searchParams.name) {
-                setName(searchParams.name);
+            const spName = searchParams.get("name");
+            if (spName) {
+                setName(spName);
             }
         };
         getSlug().then();
