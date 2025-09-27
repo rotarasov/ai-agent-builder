@@ -45,6 +45,16 @@ def needs_authentication(composio_client: Composio, user_id: str, toolkit_slug: 
     """
     Returns True if the user needs to authenticate for the toolkit, False if already connected.
     """
+    existing_configs = composio_client.auth_configs.list(toolkit_slug=toolkit_slug)
+    print("Existing configs searched: ", existing_configs)
+
+    if len(existing_configs.items) < 1:
+        print("trying to create new config")
+        composio_client.auth_configs.create(toolkit=toolkit_slug, options={"type": "use_composio_managed_auth"})
+        print("new config created")
+
+
+
     connected_accounts = composio_client.connected_accounts.list(
         user_ids=[user_id],
         toolkit_slugs=[toolkit_slug],
