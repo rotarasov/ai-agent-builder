@@ -39,9 +39,16 @@ def user_agent_completion(orchestrator_message: str, composio_client: Composio, 
 
     tools = composio_client.tools.get(user_id=user_id, toolkits=toolkits_to_fetch)
 
+    print(tools)
+
     agent_messages = agent_messages + [{"role": "user", "content": orchestrator_message}]
+
     response = openai_llm.completion(messages=agent_messages, tools=tools)
+
+    print("Agent response in useragent.py: ", response)
     result = composio_client.provider.handle_tool_calls(user_id=user_id, response=response)
+    print("tool call result:", result)
+
     agent_messages.append({"role": "assistant", "content": result})
     return agent_messages, False
 
