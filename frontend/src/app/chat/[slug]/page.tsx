@@ -19,24 +19,6 @@ type Message = {
 };
 
 const initialMessages: Message[] = [
-    {
-        id: 1,
-        role: "assistant",
-        content: "Hey there! ✨ I'm here to help with anything you need. What's on your mind?",
-        timestamp: new Date(Date.now() - 60000)
-    },
-    {
-        id: 2,
-        role: "user",
-        content: "Can you tell me a joke?",
-        timestamp: new Date(Date.now() - 30000)
-    },
-    {
-        id: 3,
-        role: "assistant",
-        content: "Here's one for you: Why don't skeletons fight each other? They don't have the guts! 💀😂",
-        timestamp: new Date()
-    },
 ];
 
 // Memoized message component for better performance
@@ -83,8 +65,10 @@ const MessageBubble = ({ msg, formatTime }: any) => {
 export default function ChatPage(
     {
         params,
+        searchParams,
     }: {
-        params: Promise<{ slug: string }>
+        params: Promise<{ slug: string, name: string }>,
+        searchParams: { name?: string }
     }
 ) {
     const [messages, setMessages] = useState<Message[]>(initialMessages);
@@ -95,15 +79,19 @@ export default function ChatPage(
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const [slug , setSlug] = useState("")
+    const [name , setName] = useState("Agentic AI Assistant")
     const [conversationId , setConversationId] = useState("")
 
     useEffect(() => {
         const getSlug = async () => {
             const resolvedParams = await params;
             setSlug(resolvedParams.slug);
+            if (searchParams.name) {
+                setName(searchParams.name);
+            }
         };
         getSlug().then();
-    }, [params]);
+    }, [params, searchParams]);
 
     console.log(slug)
 
@@ -245,7 +233,7 @@ export default function ChatPage(
                                         className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-400 rounded-full border-2 border-white animate-pulse shadow-lg"></div>
                                 </div>
                                 <div>
-                                    <h1 className="text-xl sm:text-2xl font-bold tracking-tight">AI Assistant</h1>
+                                    <h1 className="text-xl sm:text-2xl font-bold tracking-tight">{name}</h1>
                                     <p className="text-purple-100 text-xs sm:text-sm opacity-90">Always here to help</p>
                                 </div>
                             </div>

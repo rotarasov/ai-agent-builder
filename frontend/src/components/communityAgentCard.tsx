@@ -13,7 +13,7 @@ export default function CommunityAgentCard(props: CommunityAgentCardProps) {
     const router = useRouter()
 
     const handleClick = () => {
-        router.push(`/chat/${props.slug}`)
+        router.push(`/chat/${props.slug}?name=${props.name}`)
     }
 
     return (
