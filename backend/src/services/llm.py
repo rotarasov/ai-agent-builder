@@ -11,7 +11,13 @@ class LLM:
         self.client = openai.OpenAI(api_key=key, base_url=base_url)
         self.model = model
         
-
+    def completion_raw(self, messages: list[dict[str, str]], tools: Any = None):
+        return self.client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            tools=tools,
+        )
+        
     def completion(self, messages: list[dict], tools: Any = None) -> str:
         """
         Generate a completion for the given messages.
@@ -25,6 +31,7 @@ class LLM:
         response_str = response.choices[0].message.content
         logger.info(f"LLM response: {response_str}")
         return response_str
+
     
 openai_llm = LLM(key=config.openai_api_key, model="gpt-5-nano")
 apertus_llm = LLM(key=config.swiss_ai_platform_api_key, model="swiss-ai/Apertus-70B", base_url=config.swiss_ai_platform_base_url)
