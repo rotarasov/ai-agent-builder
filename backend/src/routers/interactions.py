@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 
 from src.deps import ComposioClient
-from src.services.agent_handlers.orchestrator import orchestrator_create_tasks, orchestrator_execute_next_task
+from src.services.agent_handlers.orchestrator import orchestrator_create_tasks, orchestrator_execute_next_task, orchestrator_summarize_execution
 from src.services.agent_handlers.user_agent import user_agent_completion
 from src.database.supabase import get_agents_in_set, get_authenticated_client
 from src.models.agents import Agent
@@ -131,6 +131,15 @@ async def start_conversation(request: ConversationRequest, composio_client: Comp
         
         agents = [Agent(**agent) for agent in get_agents_in_set(request.agent_set_id, supabase_client)]
         orchestrator_state = orchestrator_create_tasks(request.message, agents)
+        if orchestrator_state.is_completed:
+            # Means orchestrator answered the question itself
+            return ConversationResponse(
+                success=True,
+                message="Orchestrator answered the question itself",
+                agent_response=orchestrator_state.orchestrator_messages[-1]["content"],
+                conversation_id=conversation.id,
+                usage={"tokens": None}
+            )
         print(f"Orchestrator state: {orchestrator_state}")
         while not orchestrator_state.is_completed:
             orchestrator_state = orchestrator_execute_next_task(orchestrator_state, composio_client)
@@ -148,11 +157,12 @@ async def start_conversation(request: ConversationRequest, composio_client: Comp
                     usage={"tokens": None}
                 )
             
+        summary = orchestrator_summarize_execution(orchestrator_state)
+            
         # Add agent response to conversation
         agent_message = Message(
             role="assistant",
-            # TODO: Add the final response from the orchestrator
-            content="Completed",
+            content=summary,
             timestamp=datetime.now(timezone.utc)
         )
         conversation.messages.append(agent_message)

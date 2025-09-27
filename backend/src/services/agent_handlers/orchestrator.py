@@ -9,10 +9,10 @@ from composio import Composio
 
 def create_orchestrator_system_prompt(available_agents: list[Agent]) -> str:
     return (
-        "You are an orchestrator for AI agents.\n"
-        "You are responsible for planning the flow of the conversation and the tasks to be performed by the agents. Don't execute the tasks, just create a plan abd output it.\n"
+        "You are a first point of entry to a network of AI agents.\n"
+        "You are responsible for answering the user's question if it's in your ability or planning the tasks to be performed by the agents at your disposal. Execution is not your responsibility, create a plan and output it if needed.\n"
         f"Here are the list of agents available to you: {[{'name': agent.name, 'description': agent.description, 'system_prompt': agent.system_prompt} for agent in available_agents]}\n"
-        "Return the response in JSONL format wrapped in ```json ... ``` on the last line. The response should be a LIST of JSON OBJECTS with the following keys: 'agent_name', 'message'."
+        "Return the response in JSONL format wrapped in ```json ... ``` on the last line. If you are able to answer the query yourself, do not include the JSONL string but only the response. Otherwise, the JSONL string should be a LIST of JSON OBJECTS with the following keys: 'agent_name', 'message'. "
         "For example: [{\"agent_name\": \"notion\", \"message\": \"Create a page with the title: 'My page'\"}, {\"agent_name\": \"gmail\", \"message\": \"Send an email to john.doe@example.com and remind about the meeting tomorrow \"}]\n"
     )
 
@@ -34,8 +34,17 @@ def orchestrator_create_tasks(message: str, available_agents: list[Agent]) -> Or
     messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": message}]
     
     response = openai_llm.completion(messages)
+    if "```json\n" not in response:
+        # Orchestrator answered the question itself
+        messages.append({"role": "assistant", "content": response})
+        return OrchestratorState(orchestrator_messages=messages, 
+                                 messages_by_agent={}, 
+                                 plan=[], 
+                                 next_agent_action_index=-1, 
+                                 waiting_for_authentication=False, 
+                                 is_completed=True)
+
     response_json = response.split("```json\n")[1].removesuffix("\n```")
-    
     if not response_json.startswith("[") and not response_json.endswith("]"):
         # Agent response is not in the correct format, we need to wrap it in []
         response_json = "[" + response_json + "]"
@@ -77,5 +86,22 @@ def orchestrator_execute_next_task(state: OrchestratorState, composio_client: Co
 
     return state
 
-# def orchestrator
+def create_summary_prompt() -> str:
+    return (
+        "You are an orchestrator for AI agents.\n"
+        "You are responsible for analyzing and summarizing the execution of the network of agents according to the plan.\n"
+        "You will be given the messages from the orchestrator, the messages from the agents, and the plan.\n"
+        "Return the response in JSONL format wrapped in ```json ... ``` on the last line. The response should be a JSON OBJECT with the following keys: 'summary'."
+        "For example: {\"summary\": \"The orchestrator executed the plan successfully.\"}"
+    )
+
+def orchestrator_summarize_execution(state: OrchestratorState) -> str:
+    system_prompt = create_summary_prompt()
+    messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": f"Here are the list of messages from the orchestrator: {state.orchestrator_messages}\n"
+        f"Here are the list of messages from the agents: {state.messages_by_agent}\n"
+        f"Here is the plan: {state.plan}\n"
+        "Summarize the execution of the network of agents according to the plan."}]
+    response = openai_llm.completion(messages)
+    response_json = response.split("```json\n")[1].removesuffix("\n```")
+    return json.loads(response_json)["summary"]
     
