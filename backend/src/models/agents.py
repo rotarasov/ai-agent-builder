@@ -49,6 +49,7 @@ class AgentSet(AgentSetSupabase):
 class CreateAgentSetRequest(BaseModel):
     """Request model for creating an agent"""
     agents: List[Agent] = Field(..., description="Agent configuration")
+    name: str = Field(..., description="Name of the agent set.")
 
 class UpdateAgentRequest(BaseModel):
     """Request model for updating an agent"""

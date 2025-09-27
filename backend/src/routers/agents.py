@@ -54,7 +54,7 @@ async def post_agent_set(request: CreateAgentSetRequest):
     """
     supabase_client = get_authenticated_client()
 
-    agent_set = AgentSetSupabase()
+    agent_set = AgentSetSupabase(name=request.name)
 
     success, agent_set_id = create_agent_set(agent_set, supabase_client)
 
