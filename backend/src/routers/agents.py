@@ -76,7 +76,7 @@ async def post_agent_set(request: CreateAgentSetRequest):
 
         logger.info(f"Created agent set: {agent_set_id}")
 
-        new_agent_set = AgentSet(**agent_set.model_dump(), agents=agents, name=request.name)
+        new_agent_set = AgentSet(**agent_set.model_dump(), agents=agents)
 
         return AgentSetResponse(
             success=True,
