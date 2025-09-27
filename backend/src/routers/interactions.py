@@ -7,9 +7,10 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 
 from src.deps import ComposioClient
-from src.services.agent_handlers.orchestrator import orchestrator_completion, parse_orchestrator_response, AgentDescriptionForOrchestrator
+from src.services.agent_handlers.orchestrator import orchestrator_create_tasks, orchestrator_execute_next_task
+from src.services.agent_handlers.user_agent import user_agent_completion
 from src.database.supabase import get_agents_in_set, get_authenticated_client
-
+from src.models.agents import Agent
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -128,20 +129,30 @@ async def start_conversation(request: ConversationRequest, composio_client: Comp
         # )
         # action_logs_db[action_log.id] = action_log
         
-        agents = get_agents_in_set(request.agent_set_id, supabase_client)
-        name_to_id_mapping = {agent.config.name: agent.id for agent in agents}
-        agent_descriptions = [AgentDescriptionForOrchestrator(name=agent.name, description=agent.description, system_prompt=agent.system_prompt) for agent in agents]
-        orchestrator_response_str = orchestrator_completion(request.message, agent_descriptions)
-        agent_actions = parse_orchestrator_response(orchestrator_response_str)
-        for agent_action in agent_actions:
-            agent = agents[name_to_id_mapping[agent_action.agent_name]]
-            agent_response_content = agent.completion(agent_action.message)
-        
-        
+        agents = [Agent(**agent) for agent in get_agents_in_set(request.agent_set_id, supabase_client)]
+        orchestrator_state = orchestrator_create_tasks(request.message, agents)
+        print(f"Orchestrator state: {orchestrator_state}")
+        while not orchestrator_state.is_completed:
+            orchestrator_state = orchestrator_execute_next_task(orchestrator_state, composio_client)
+            print(f"Orchestrator state: {orchestrator_state}")
+            
+            if orchestrator_state.waiting_for_authentication:
+                latest_agent_response = orchestrator_state.messages_by_agent[orchestrator_state.plan[orchestrator_state.next_agent_action_index].agent.uuid][-1]["content"]
+                conversation.messages.append(Message(role="assistant", content=latest_agent_response, timestamp=datetime.now(timezone.utc)))
+                conversation.updated_at = datetime.now(timezone.utc)
+                return ConversationResponse(
+                    success=True,
+                    message="User needs to authenticate",
+                    agent_response=latest_agent_response,
+                    conversation_id=conversation.id,
+                    usage={"tokens": None}
+                )
+            
         # Add agent response to conversation
         agent_message = Message(
             role="assistant",
-            content=agent_response_content,
+            # TODO: Add the final response from the orchestrator
+            content="Completed",
             timestamp=datetime.now(timezone.utc)
         )
         conversation.messages.append(agent_message)

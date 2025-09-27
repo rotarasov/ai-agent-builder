@@ -23,7 +23,7 @@ class AgentStatus(StrEnum):
 class Agent(BaseModel):
     """Agent configuration model"""
     # Will be provided by Piotr
-    uuid: str = Field(default=str(uuid.uuid4()), description="Agent ID")
+    uuid: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Agent ID")
     name: str = Field(..., description="Agent name", min_length=1, max_length=100)
     description: Optional[str] = Field(None, description="Agent description", max_length=500)
     model_name: str = Field(..., description="Model name (e.g., gpt-4, claude-3)")
@@ -36,7 +36,7 @@ class Agent(BaseModel):
 
 class AgentSetSupabase(BaseModel):
     """Agent set model"""
-    uuid: str = Field(default=str(uuid.uuid4()), description="Agent set ID")
+    uuid: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Agent set ID")
     status: AgentStatus = Field(default=AgentStatus.DRAFT, description="Agent set status")
     created_at: str = Field(default=datetime.now().isoformat(), description="Creation timestamp")
 

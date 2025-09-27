@@ -60,7 +60,7 @@ async def root():
 async def not_found_handler(request, exc):
     return JSONResponse(
         status_code=404,
-        content={"detail": "Endpoint not found"}
+        content={"detail": "Resource not found"}
     )
 
 
