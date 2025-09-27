@@ -1,6 +1,6 @@
 from composio.core.models import Tools
 
-from src.services.llm import openai_llm
+from src.services.llm import LLM, openai_llm
 
 from composio import Composio
 
@@ -14,7 +14,7 @@ def create_system_prompt_for_user_agent() -> str:
         "For example: {\"result\": \"Here is the weather for Zurich for tomorrow\"}"
     )
 
-def user_agent_completion(user_id: str, orchestrator_message: str, composio_client: Composio, tools: list[str], transcript: list[dict[str, str]] | None = None) -> tuple[list[dict[str, str]], bool]:
+def user_agent_completion(user_id: str, orchestrator_message: str, composio_client: Composio, tools: list[str], llm: LLM = openai_llm, transcript: list[dict[str, str]] | None = None) -> tuple[list[dict[str, str]], bool]:
     """
     Returns a tuple with the response and a boolean indicating if the user needs to authenticate.
     """
@@ -39,7 +39,7 @@ def user_agent_completion(user_id: str, orchestrator_message: str, composio_clie
     print(tools)
 
     agent_messages = agent_messages + [{"role": "user", "content": orchestrator_message}]
-    response = openai_llm.completion_raw(messages=agent_messages, tools=tools)
+    response = llm.completion_raw(messages=agent_messages, tools=tools)
     print("Agent response in useragent.py: ", response)
     result = composio_client.provider.handle_tool_calls(user_id=user_id, response=response)
     print("tool call result:", result)

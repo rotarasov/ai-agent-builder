@@ -8,7 +8,6 @@ from typing import List, Optional, Dict, Any
 
 from src.deps import ComposioClient
 from src.services.agent_handlers.orchestrator import orchestrator_create_tasks, orchestrator_execute_next_task, orchestrator_summarize_execution, OrchestratorState
-from src.services.agent_handlers.user_agent import user_agent_completion
 from src.database.supabase import get_agents_in_set, get_authenticated_client
 from src.models.agents import Agent
 

@@ -94,8 +94,8 @@ def orchestrator_execute_next_task(state: OrchestratorState, composio_client: Co
     else:
         state.messages_by_agent[agent_action.agent.uuid].append({"role": "user", "content": agent_action.task})
         
-    agent_messages, needs_authentication = user_agent_completion(state.conversation_id, agent_action.task, composio_client, agent_action.agent.tools, state.
-                                                                 messages_by_agent[agent_action.agent.uuid])
+    llm = apertus_llm if agent_action.agent.model_name == "swiss-ai/Apertus-70B" else openai_llm
+    agent_messages, needs_authentication = user_agent_completion(state.conversation_id, agent_action.task, composio_client, agent_action.agent.tools, llm, state.messages_by_agent[agent_action.agent.uuid])
     agent_response = agent_messages[-1]["content"]
     state.messages_by_agent[agent_action.agent.uuid] = agent_messages
     state.orchestrator_messages.append({"role": "assistant", "content": agent_response})
