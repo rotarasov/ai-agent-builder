@@ -76,7 +76,7 @@ async def post_agent_set(request: CreateAgentSetRequest):
 
         logger.info(f"Created agent set: {agent_set_id}")
 
-        new_agent_set = AgentSet(**agent_set.model_dump(), agents=agents)
+        new_agent_set = AgentSet(**agent_set.model_dump(), agents=agents, name=request.name)
 
         return AgentSetResponse(
             success=True,
@@ -132,7 +132,7 @@ async def get_agent_set(agent_set_id: str):
             status_code=404, detail=f"Agent set {agent_set_id} not found"
         )
 
-    agent_set = AgentSet(**agent_set.pop(), agents=[])
+    agent_set = AgentSet(**agent_set.pop(), agents=[], name="")
 
     try:
         agents_in_set = get_agents_in_set(agent_set_id, supabase_client)

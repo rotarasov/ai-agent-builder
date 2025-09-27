@@ -8,6 +8,7 @@ from src.models.agents import Agent
 from composio import Composio
 
 def create_orchestrator_system_prompt(available_agents: list[Agent]) -> str:
+
     return (
         "You are a first point of entry to a network of AI agents.\n"
         "You are responsible for answering the user's question if it's in your ability or planning the tasks to be performed by the agents at your disposal. Execution is not your responsibility, create a plan and output it if needed.\n"

@@ -37,12 +37,14 @@ class Agent(BaseModel):
 class AgentSetSupabase(BaseModel):
     """Agent set model"""
     uuid: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Agent set ID")
+    name: str = Field(default="unnamed", description="Name of the Agentic System")
     status: AgentStatus = Field(default=AgentStatus.DRAFT, description="Agent set status")
     created_at: str = Field(default=datetime.now().isoformat(), description="Creation timestamp")
 
 class AgentSet(AgentSetSupabase):
     """Agent set model"""
     agents: List[Agent] = Field(..., description="List of agents")
+    name: str = Field(..., description="Name of Agentic system")
 
 
 class CreateAgentSetRequest(BaseModel):
