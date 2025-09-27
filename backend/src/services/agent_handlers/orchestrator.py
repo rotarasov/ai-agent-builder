@@ -93,8 +93,10 @@ def orchestrator_execute_next_task(state: OrchestratorState, composio_client: Co
     else:
         state.messages_by_agent[agent_action.agent.uuid].append({"role": "user", "content": agent_action.task})
         
-    agent_response, needs_authentication = user_agent_completion(state.messages_by_agent[agent_action.agent.uuid], composio_client, agent_action.agent.tools)
-    state.messages_by_agent[agent_action.agent.uuid].append({"role": "assistant", "content": agent_response})
+    agent_messages, needs_authentication = user_agent_completion(agent_action.task, composio_client, agent_action.agent.tools, state.
+                                                                 messages_by_agent[agent_action.agent.uuid])
+    agent_response = agent_messages[-1]["content"]
+    state.messages_by_agent[agent_action.agent.uuid] = agent_messages
     state.orchestrator_messages.append({"role": "tool", "content": agent_response})
     if needs_authentication:
         state.waiting_for_authentication = True

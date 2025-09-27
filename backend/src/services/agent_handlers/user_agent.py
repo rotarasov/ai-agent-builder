@@ -17,7 +17,7 @@ def create_system_prompt_for_user_agent() -> str:
         "For example: {\"result\": \"Here is the weather for Zurich for tomorrow\"}"
     )
 
-def user_agent_completion(orchestrator_message: str, composio_client: Composio, tools: list[str], transcript: list[dict[str, str]] | None = None) -> tuple[str, bool]:
+def user_agent_completion(orchestrator_message: str, composio_client: Composio, tools: list[str], transcript: list[dict[str, str]] | None = None) -> tuple[list[dict[str, str]], bool]:
     """
     Returns a tuple with the response and a boolean indicating if the user needs to authenticate.
     """
@@ -30,15 +30,20 @@ def user_agent_completion(orchestrator_message: str, composio_client: Composio, 
         else:
             toolkits_to_fetch.append(tool)
 
+    system_prompt = create_system_prompt_for_user_agent()
+    agent_messages = (transcript or [{"role": "system", "content": system_prompt}])
+
     if len(authentication_urls) > 0:
-        return "The user needs to authenticate, redirect them here:\n- " + "\n- ".join(authentication_urls), True
+        agent_messages.append({"role": "assistant", "content": "The user needs to authenticate, redirect them here:\n- " + "\n- ".join(authentication_urls)})
+        return agent_messages, True
 
     tools = composio_client.tools.get(user_id=user_id, toolkits=toolkits_to_fetch)
 
-    system_prompt = create_system_prompt_for_user_agent()
-    response = openai_llm.completion(messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": orchestrator_message}], tools=tools)
+    agent_messages = agent_messages + [{"role": "user", "content": orchestrator_message}]
+    response = openai_llm.completion(messages=agent_messages, tools=tools)
     result = composio_client.provider.handle_tool_calls(user_id=user_id, response=response)
-    return result, False
+    agent_messages.append({"role": "assistant", "content": result})
+    return agent_messages, False
 
 
 def needs_authentication(composio_client: Composio, user_id: str, toolkit_slug: str) -> bool:
