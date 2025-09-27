@@ -1,7 +1,9 @@
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -17,13 +19,14 @@ import { AgentConfig } from "@/types/agent";
 
 interface DeployConfirmationDialogProps {
     agents: AgentConfig[];
-    onDeploy: (systemName: string) => Promise<void>;
+    onDeploy: (systemName: string) => Promise<void>
 }
 
 export default function DeployConfirmationDialog({
                                                      agents,
                                                      onDeploy
                                                  }: DeployConfirmationDialogProps) {
+    const router = useRouter();
     const [systemName, setSystemName] = useState("");
     const [isDeploying, setIsDeploying] = useState(false);
     const [open, setOpen] = useState(false);
@@ -33,12 +36,11 @@ export default function DeployConfirmationDialog({
 
         setIsDeploying(true);
         try {
-            await onDeploy(systemName.trim());
-            setOpen(false);
-            setSystemName("");
+            const response = await onDeploy(systemName.trim());
+            window.location.href = `/`
+
         } catch (error) {
             console.error("Deployment failed:", error);
-        } finally {
             setIsDeploying(false);
         }
     };
@@ -62,64 +64,78 @@ export default function DeployConfirmationDialog({
             </AlertDialogTrigger>
 
             <AlertDialogContent className="max-w-md">
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Deploy Agent System</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        You're about to deploy {validAgentsCount} agent{validAgentsCount !== 1 ? 's' : ''} to production.
-                        Please give your system a name to continue.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-
-                <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="system-name">System Name</Label>
-                        <Input
-                            id="system-name"
-                            placeholder="e.g., Customer Support Crew"
-                            value={systemName}
-                            onChange={(e) => setSystemName(e.target.value)}
-                            disabled={isDeploying}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" && !isDeployDisabled) {
-                                    handleDeploy();
-                                }
-                            }}
-                        />
+                {isDeploying ? (
+                    // Show spinner overlay while deploying
+                    <div className="flex flex-col items-center justify-center py-12">
+                        <Loader2 className="h-12 w-12 animate-spin text-purple-500 mb-4" />
+                        <h3 className="text-lg font-semibold mb-2">Deploying your agents...</h3>
+                        <p className="text-sm text-gray-600 text-center">
+                            Setting up {validAgentsCount} agent{validAgentsCount !== 1 ? 's' : ''} in production.
+                            This may take a moment.
+                        </p>
                     </div>
+                ) : (
+                    <>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Deploy Agent System</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                You're about to deploy {validAgentsCount} agent{validAgentsCount !== 1 ? 's' : ''} to production.
+                                Please give your system a name to continue.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
 
-                    {/* Agent Summary */}
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                        <h4 className="text-sm font-medium mb-2">Agents to deploy:</h4>
-                        <div className="space-y-1">
-                            {agents
-                                .filter(agent => agent.name.trim() && agent.system_prompt.trim())
-                                .map((agent, index) => (
-                                    <div key={agent.id} className="text-sm text-gray-600">
-                                        {index + 1}. {agent.name || `Agent ${agent.id}`}
-                                    </div>
-                                ))
-                            }
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="system-name">System Name</Label>
+                                <Input
+                                    id="system-name"
+                                    placeholder="e.g., Customer Support Crew"
+                                    value={systemName}
+                                    onChange={(e) => setSystemName(e.target.value)}
+                                    disabled={isDeploying}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" && !isDeployDisabled) {
+                                            handleDeploy();
+                                        }
+                                    }}
+                                />
+                            </div>
+
+                            {/* Agent Summary */}
+                            <div className="bg-gray-50 p-3 rounded-lg">
+                                <h4 className="text-sm font-medium mb-2">Agents to deploy:</h4>
+                                <div className="space-y-1">
+                                    {agents
+                                        .filter(agent => agent.name.trim() && agent.system_prompt.trim())
+                                        .map((agent, index) => (
+                                            <div key={agent.id} className="text-sm text-gray-600">
+                                                {index + 1}. {agent.name || `Agent ${agent.id}`}
+                                            </div>
+                                        ))
+                                    }
+                                </div>
+                                {agents.some(agent => !agent.name.trim() || !agent.system_prompt.trim()) && (
+                                    <p className="text-xs text-orange-600 mt-2">
+                                        Note: Agents without names or system prompts will be skipped.
+                                    </p>
+                                )}
+                            </div>
                         </div>
-                        {agents.some(agent => !agent.name.trim() || !agent.system_prompt.trim()) && (
-                            <p className="text-xs text-orange-600 mt-2">
-                                Note: Agents without names or system prompts will be skipped.
-                            </p>
-                        )}
-                    </div>
-                </div>
 
-                <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isDeploying}>
-                        Cancel
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                        onClick={handleDeploy}
-                        disabled={isDeployDisabled}
-                        className="bg-gradient-to-r from-red-500 to-purple-500 hover:opacity-75"
-                    >
-                        {isDeploying ? "Deploying..." : "Deploy System"}
-                    </AlertDialogAction>
-                </AlertDialogFooter>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel disabled={isDeploying}>
+                                Cancel
+                            </AlertDialogCancel>
+                            <AlertDialogAction
+                                onClick={handleDeploy}
+                                disabled={isDeployDisabled}
+                                className="bg-gradient-to-r from-red-500 to-purple-500 hover:opacity-75"
+                            >
+                                Deploy System
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </>
+                )}
             </AlertDialogContent>
         </AlertDialog>
     );

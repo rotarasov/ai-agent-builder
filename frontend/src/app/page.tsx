@@ -94,7 +94,7 @@ export default function Home() {
                 body: JSON.stringify(payload), // send all configs
             })
             if (!response.ok) throw new Error("Failed to deploy")
-            console.log("Deployed successfully!", response.body)
+            console.log("Deployed successfully!", response)
         } catch (error) {
             console.error(error)
         }

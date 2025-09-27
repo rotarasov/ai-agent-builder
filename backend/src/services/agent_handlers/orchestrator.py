@@ -98,7 +98,7 @@ def orchestrator_execute_next_task(state: OrchestratorState, composio_client: Co
                                                                  messages_by_agent[agent_action.agent.uuid])
     agent_response = agent_messages[-1]["content"]
     state.messages_by_agent[agent_action.agent.uuid] = agent_messages
-    state.orchestrator_messages.append({"role": "tool", "content": agent_response})
+    state.orchestrator_messages.append({"role": "assistant", "content": agent_response})
     if needs_authentication:
         state.waiting_for_authentication = True
         # We need to wait for the authentication to complete before we can execute the next task
