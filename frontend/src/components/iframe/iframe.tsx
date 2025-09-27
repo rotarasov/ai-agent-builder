@@ -66,7 +66,7 @@ export default function IframeExportButton({ slug, baseUrl = "https://your-domai
             </Button>
 
             {isOpen && typeof window !== 'undefined' && createPortal(
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+                <div className="fixed h-screen inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
                     <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                         <CardHeader className="flex flex-row items-center justify-between">
                             <CardTitle>Export Chat as Iframe</CardTitle>
