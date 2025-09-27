@@ -6,6 +6,7 @@ import AgentCard from "@/components/agentCard"
 import {Separator} from "@/components/ui/separator";
 import {AgentConfig, AgentSet} from "@/types/agent";
 import CommunityAgentCard from "@/components/communityAgentCard";
+import DeployConfirmationDialog from "@/components/deploymentDialog";
 
 export default function Home() {
     const [agents, setAgents] = useState<AgentConfig[]>([{
@@ -139,13 +140,13 @@ export default function Home() {
                 <div className="mt-4 sticky bottom-0 pt-4">
                     <Separator className="mb-2"/>
                     <div className="w-full flex flex-row justify-end">
-                        <Button
-                            className="mt-4 text-white text-lg font-semibold bg-linear-65 from-red-500 to-purple-500 hover:opacity-75"
-                            size="lg"
-                            onClick={deployAgents}
-                        >
-                            Deploy
-                        </Button></div>
+                        <div className="w-full flex flex-row justify-end">
+                            <DeployConfirmationDialog
+                                agents={agents}
+                                onDeploy={deployAgents}
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

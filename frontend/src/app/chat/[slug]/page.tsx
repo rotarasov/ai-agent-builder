@@ -157,7 +157,7 @@ export default function ChatPage(
         const aiResponse: Message = {
             id: Date.now() + 1,
             role: "assistant",
-            content: data.content,
+            content: data.agent_response,
             timestamp: new Date(),
         };
 
