@@ -19,6 +19,8 @@
     "clsx": "^2.1.1",
     "dotenv": "^17.2.2",
     "framer-motion": "^12.23.22",
+    "linkify-react": "^4.3.2",
+    "linkifyjs": "^4.3.2",
     "lucide-react": "^0.544.0",
     "next": "15.5.4",
     "next-qrcode": "^2.5.1",

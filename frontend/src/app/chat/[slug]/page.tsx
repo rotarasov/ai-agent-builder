@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Send, Sparkles, Bot, User, Moon, Sun } from "lucide-react";
 import QRCode from "@/components/qr/qrcode";
 import IframeExportButton from "@/components/iframe/iframe";
+import Linkify from "linkify-react";
 
 type Message = {
     id: number;
@@ -62,7 +63,14 @@ const MessageBubble = ({ msg, formatTime }: any) => {
                             : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-2xl rounded-tl-sm"
                     }`}
                 >
-                    <p className="text-[15px] leading-relaxed break-words">{msg.content}</p>
+                    <Linkify
+                        options={{
+                            target: "_blank",
+                            className: "text-blue-500 hover:underline",
+                        }}
+                    >
+                        <p className="text-[15px] leading-relaxed break-words">{msg.content}</p>
+                    </Linkify>
                 </div>
                 <span className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 px-1">
                     {formatTime(msg.timestamp)}
