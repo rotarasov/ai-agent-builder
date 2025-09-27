@@ -202,9 +202,9 @@ export default function AgentCard({ agent, onUpdate, onDelete, tools }: AgentCar
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                                <SelectItem value="Apertus-70B-Instruct-2509">Apertus-70B-Instruct-2509</SelectItem>
+                                                <SelectItem value="swiss-ai/Apertus-70B">swiss-ai/Apertus-70B</SelectItem>
+                                                <SelectItem value="gpt-5-nano">gpt-5-nano</SelectItem>
                                                 <SelectItem value="gpt-5">gpt-5</SelectItem>
-                                                <SelectItem value="gpt-4-turbo">gpt-4-turbo</SelectItem>
                                             </SelectContent>
                                         </Select>
                                         <FormMessage />
