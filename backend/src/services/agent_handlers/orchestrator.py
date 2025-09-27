@@ -115,18 +115,34 @@ def orchestrator_execute_next_task(state: OrchestratorState, composio_client: Co
 
 def create_summary_prompt() -> str:
     return (
-        "You are an orchestrator for AI agents.\n"
-        "You are responsible for analyzing and summarizing the execution of the network of agents according to the plan.\n"
-        "You will be given the messages from the orchestrator, the messages from the agents, and the plan.\n"
-        "Return the response in JSONL format wrapped in ```json ... ``` on the last line. The response should be a JSON OBJECT with the following keys: 'summary'."
-        "For example: {\"summary\": \"The orchestrator executed the plan successfully.\"}"
+        "You are an AI assistant that helps summarize the results of automated tasks and workflows. You will review the conversation history and task details to provide a clear, user-friendly response to the user query in which you summarize what was accomplished.\n\n"
+        "Your task is to:\n"
+        "1. Review what tasks were requested and how they were handled\n"
+        "2. Summarize the key results and outcomes from the automated processes\n"
+        "3. Highlight any important details about what was completed\n"
+        "4. Note whether all requested tasks were completed successfully or if there were any issues\n\n"
+        "Before providing your final response, use the scratchpad below to organize your thoughts:\n\n"
+        "<scratchpad>\n"
+        "Think through:\n"
+        "- What was the user trying to accomplish?\n"
+        "- How were the tasks coordinated and executed?\n"
+        "- What were the key results from each step?\n"
+        "- Were there any problems or incomplete tasks?\n"
+        "- What was the overall outcome for the user?\n"
+        "</scratchpad>\n\n"
+        "Provide your response in JSONL format wrapped in json ... tags. The response must be a single JSON object with a 'summary' key that contains a comprehensive summary of the results.\n\n"
+        "For example:\n"
+        "```json\n"
+        "{\"summary\": \"Your request was completed successfully. The system handled task A and produced result X, while also completing task B with outcome Y. All requested objectives were met.\"}\n"
+        "```\n\n"
+        "Your summary should be detailed and include specific results and outcomes from the automated processes."
     )
 
 def orchestrator_summarize_execution(state: OrchestratorState) -> str:
     system_prompt = create_summary_prompt()
-    messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": f"Here are the list of messages from the orchestrator: {state.orchestrator_messages}\n"
-        f"Here are the list of messages from the agents: {state.messages_by_agent}\n"
-        f"Here is the plan: {state.plan}\n"
+    messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": f"Here are the list of messages from the orchestrator\n<orchestrator_messages>\n{state.orchestrator_messages}\n</orchestrator_messages>\n"
+        f"Here are the list of messages from the agents\n<agent_messages>\n{state.messages_by_agent}\n</agent_messages>\n"
+        f"Here is the plan\n<plan>\n{state.plan}\n</plan>\n"
         "Summarize the execution of the network of agents according to the plan."}]
     response = openai_llm.completion(messages)
     response_json = response.split("```json\n")[1].removesuffix("\n```")
