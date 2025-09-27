@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
         console.log("Received agents:", agents);
 
         // Forward to external API
-        const response = await fetch("http://0.0.0.0:8000/api/v1/agent-sets/", {
+        const response = await fetch(process.env.NEXT_PUBLIC_BACKEND_URL +"/api/v1/agent-sets/", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
