@@ -135,10 +135,13 @@ async def start_conversation(request: ConversationRequest, composio_client: Comp
         orchestrator_states_db[conversation.id] = orchestrator_state
         if orchestrator_state.is_completed:
             # Means orchestrator answered the question itself
+            response = orchestrator_state.orchestrator_messages[-1]["content"]
+            conversation.messages.append(Message(role="assistant", content=response, timestamp=datetime.now(timezone.utc)))
+            conversation.updated_at = datetime.now(timezone.utc)
             return ConversationResponse(
                 success=True,
                 message="Orchestrator answered the question itself",
-                agent_response=orchestrator_state.orchestrator_messages[-1]["content"],
+                agent_response=response,
                 conversation_id=conversation.id,
                 usage={"tokens": None}
             )
@@ -327,6 +330,19 @@ async def send_message(conversation_id: str, request: MessageRequest, composio_c
             timestamp=datetime.now(timezone.utc)
         )
         conversation.messages.append(user_message)
+        
+        if orchestrator_state.is_completed:
+            # Means orchestrator answered the question itself
+            response = orchestrator_state.orchestrator_messages[-1]["content"]
+            conversation.messages.append(Message(role="assistant", content=response, timestamp=datetime.now(timezone.utc)))
+            conversation.updated_at = datetime.now(timezone.utc)
+            return ConversationResponse(
+                success=True,
+                message="Orchestrator answered the question itself",
+                agent_response=response,
+                conversation_id=conversation.id,
+                usage={"tokens": None}
+            )
         
         print(f"Orchestrator state: {orchestrator_state}")
         while not orchestrator_state.is_completed:
