@@ -1,4 +1,6 @@
 // app/api/send/route.ts
+
+import { headers } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
 interface SendMessageRequest {

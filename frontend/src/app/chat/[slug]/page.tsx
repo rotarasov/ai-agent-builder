@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Send, Sparkles, Bot, User, Moon, Sun } from "lucide-react";
 import QRCode from "@/components/qr/qrcode";
+import IframeExportButton from "@/components/iframe/iframe";
 
 type Message = {
     id: number;
@@ -241,6 +242,12 @@ export default function ChatPage(
                                 </div>
                             </div>
 
+                            <div className="flex flex-row gap-2 items-center">
+                            <IframeExportButton
+                                slug={slug}
+                                baseUrl={process.env.NEXT_PUBLIC_BASE_URL || "https://ai-agent-builder-one.vercel.app"}
+                            />
+
                             {/* Dark mode toggle */}
                             <Button
                                 onClick={() => setIsDark(!isDark)}
@@ -249,6 +256,7 @@ export default function ChatPage(
                             >
                                 {isDark ? <Sun className="w-5 h-5"/> : <Moon className="w-5 h-5"/>}
                             </Button>
+                            </div>
                         </div>
                     </div>
 
