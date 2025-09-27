@@ -1,4 +1,4 @@
-# ai-agent-builder
+# AI Agent Build
 AI Agent Builder for Swiss AI Hackathon
 
 # Install
