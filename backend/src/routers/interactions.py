@@ -131,7 +131,7 @@ async def start_conversation(request: ConversationRequest, composio_client: Comp
         # action_logs_db[action_log.id] = action_log
         
         agents = [Agent(**agent) for agent in get_agents_in_set(request.agent_set_id, supabase_client)]
-        orchestrator_state = orchestrator_create_tasks(request.message, agents)
+        orchestrator_state = orchestrator_create_tasks(request.message, agents, conversation.id)
         orchestrator_states_db[conversation.id] = orchestrator_state
         if orchestrator_state.is_completed:
             # Means orchestrator answered the question itself
@@ -319,10 +319,10 @@ async def send_message(conversation_id: str, request: MessageRequest, composio_c
         # Clean the user agent messages because they are not needed anymore
         agents = [Agent(**agent) for agent in get_agents_in_set(conversation.agent_set_id, supabase_client)]
         if orchestrator_state.is_completed:
-            orchestrator_state = orchestrator_create_tasks(request.message, agents, orchestrator_state.orchestrator_messages)
+            orchestrator_state = orchestrator_create_tasks(request.message, agents, conversation.id, orchestrator_state.orchestrator_messages)
         else:
             orchestrator_state.orchestrator_messages.append({"role": "user", "content": request.message})
-            orchestrator_state = orchestrator_create_tasks(request.message, agents, orchestrator_state.orchestrator_messages)
+            orchestrator_state = orchestrator_create_tasks(request.message, agents, conversation.id, orchestrator_state.orchestrator_messages)
         # Add user message to conversation
         user_message = Message(
             role="user",
