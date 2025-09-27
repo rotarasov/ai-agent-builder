@@ -4,9 +4,6 @@ from src.services.llm import openai_llm
 
 from composio import Composio
 
-user_id = "session_id"
-
-
 
 # def create_system_prompt_for_user_agent(orchestrator_message: str) -> str:
 def create_system_prompt_for_user_agent() -> str:
@@ -17,7 +14,7 @@ def create_system_prompt_for_user_agent() -> str:
         "For example: {\"result\": \"Here is the weather for Zurich for tomorrow\"}"
     )
 
-def user_agent_completion(orchestrator_message: str, composio_client: Composio, tools: list[str], transcript: list[dict[str, str]] | None = None) -> tuple[list[dict[str, str]], bool]:
+def user_agent_completion(user_id: str,orchestrator_message: str, composio_client: Composio, tools: list[str], transcript: list[dict[str, str]] | None = None) -> tuple[list[dict[str, str]], bool]:
     """
     Returns a tuple with the response and a boolean indicating if the user needs to authenticate.
     """

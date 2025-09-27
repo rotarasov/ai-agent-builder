@@ -45,6 +45,7 @@ class AgentAction(BaseModel):
     task: str
 
 class OrchestratorState(BaseModel):
+    conversation_id: str
     orchestrator_messages: list[dict[str, str]]
     messages_by_agent: dict[str, list[dict[str, str]]]
     plan: list[AgentAction]
@@ -52,7 +53,7 @@ class OrchestratorState(BaseModel):
     waiting_for_authentication: bool
     is_completed: bool
 
-def orchestrator_create_tasks(message: str, available_agents: list[Agent], transcript: list[dict[str, str]] | None = None) -> OrchestratorState:
+def orchestrator_create_tasks(message: str, available_agents: list[Agent], conversation_id: str, transcript: list[dict[str, str]] | None = None) -> OrchestratorState:
     system_prompt = create_orchestrator_system_prompt(available_agents)
     messages = (transcript or [{"role": "system", "content": system_prompt}]) + [{"role": "user", "content": message}]
     
@@ -60,7 +61,7 @@ def orchestrator_create_tasks(message: str, available_agents: list[Agent], trans
     if "```json\n" not in response:
         # Orchestrator answered the question itself
         messages.append({"role": "assistant", "content": response})
-        return OrchestratorState(orchestrator_messages=messages, 
+        return OrchestratorState(conversation_id=conversation_id, orchestrator_messages=messages, 
                                  messages_by_agent={}, 
                                  plan=[], 
                                  next_agent_action_index=-1, 
@@ -74,7 +75,7 @@ def orchestrator_create_tasks(message: str, available_agents: list[Agent], trans
     
     agent_action_dicts = json.loads(response_json)
     agents_by_name = {agent.name: agent for agent in available_agents}
-    return OrchestratorState(orchestrator_messages=messages, 
+    return OrchestratorState(conversation_id=conversation_id, orchestrator_messages=messages, 
                              messages_by_agent={agent.uuid: [] for agent in available_agents}, 
                              plan=[AgentAction(agent=agents_by_name[action_dict["agent_name"]], task=action_dict["message"]) for action_dict in agent_action_dicts], 
                              next_agent_action_index=0, 
@@ -93,7 +94,7 @@ def orchestrator_execute_next_task(state: OrchestratorState, composio_client: Co
     else:
         state.messages_by_agent[agent_action.agent.uuid].append({"role": "user", "content": agent_action.task})
         
-    agent_messages, needs_authentication = user_agent_completion(agent_action.task, composio_client, agent_action.agent.tools, state.
+    agent_messages, needs_authentication = user_agent_completion(state.conversation_id, agent_action.task, composio_client, agent_action.agent.tools, state.
                                                                  messages_by_agent[agent_action.agent.uuid])
     agent_response = agent_messages[-1]["content"]
     state.messages_by_agent[agent_action.agent.uuid] = agent_messages
