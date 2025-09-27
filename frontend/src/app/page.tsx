@@ -103,9 +103,9 @@ export default function Home() {
 
     return (
         <div className="w-full flex flex-row">
-            <div className="w-1/2 p-12 overflow-hidden h-[100vh]">
+            <div className="flex flex-col w-1/2 p-12 overflow-hidden h-[100vh]">
                 <h1 className="font-semibold text-xl pb-2">🤖 Community Agents</h1>
-                <div className="flex flex-1 flex-col gap-2 overflow-y-auto">
+                <div className="flex flex-1 flex-col gap-2 overflow-y-auto min-h-0">
                     {agent_sets.map((set) => (
                     <CommunityAgentCard
                         key={set.uuid}
